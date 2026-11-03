@@ -1,0 +1,31 @@
+{
+  "name": "AgriPrix Observatory (DevContainer)",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "job-runner",
+  "runServices": ["db", "mlflow", "api", "dashboard"],
+  "workspaceFolder": "/app",
+  "remoteUser": "agriprix",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"],
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          }
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "bierner.markdown-mermaid",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

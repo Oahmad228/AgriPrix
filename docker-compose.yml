@@ -1,0 +1,190 @@
+name: agriprix-observatory
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL 16 Data Warehouse (agriprix_dw) & MLflow Backend (mlflow_db)
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: agriprix-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-agriprix_super_local_dev}
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/01-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres} -d agriprix_dw"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    mem_limit: 512m
+    cpus: 0.75
+    networks:
+      - agriprix-net
+
+  # ---------------------------------------------------------------------------
+  # 2. MLflow Tracking Server (Isolated in mlflow_db via mlflow_user)
+  # ---------------------------------------------------------------------------
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: agriprix-app:latest
+    container_name: agriprix-mlflow
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MLFLOW_BACKEND_URI: postgresql+psycopg://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql+psycopg://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
+      --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 0.50
+    networks:
+      - agriprix-net
+
+  # ---------------------------------------------------------------------------
+  # 3. FastAPI Service (Connected ONLY as agriprix_api_readonly to agriprix_dw)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: agriprix-app:latest
+    container_name: agriprix-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DW_DB: ${DW_DB:-agriprix_dw}
+      DW_READONLY_USER: ${DW_READONLY_USER:-agriprix_api_readonly}
+      DW_READONLY_PASSWORD: ${DW_READONLY_PASSWORD:-agriprix_readonly_local_dev}
+      API_RATE_LIMIT: ${API_RATE_LIMIT:-60/minute}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8501,http://127.0.0.1:8501,http://dashboard:8501}
+      ENABLE_CURRENCY_CONVERSION: ${ENABLE_CURRENCY_CONVERSION:-false}
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./src:/app/src:ro
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    mem_limit: 512m
+    cpus: 0.75
+    networks:
+      - agriprix-net
+
+  # ---------------------------------------------------------------------------
+  # 4. Streamlit Dashboard (Zero SQL driver/credentials — HTTP client of api)
+  # ---------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: agriprix-app:latest
+    container_name: agriprix-dashboard
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: http://api:8000
+      PUBLIC_API_DOCS_URL: http://localhost:${API_PORT:-8000}/docs
+    command: >
+      streamlit run src/dashboard/app.py
+      --server.address=0.0.0.0
+      --server.port=8501
+      --server.headless=true
+      --browser.gatherUsageStats=false
+    volumes:
+      - ./src:/app/src:ro
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 0.50
+    networks:
+      - agriprix-net
+
+  # ---------------------------------------------------------------------------
+  # 5. Ephemeral Job Runner (ETL, ML Training, Tests, Linters)
+  #    Invoked via `make etl`, `make train`, `make test`, `make lint`
+  # ---------------------------------------------------------------------------
+  job-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: agriprix-app:latest
+    profiles: ["jobs"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GIT_SHA: ${GIT_SHA:-dev-local}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DW_DB: ${DW_DB:-agriprix_dw}
+      DW_WRITER_USER: ${DW_WRITER_USER:-agriprix_etl_writer}
+      DW_WRITER_PASSWORD: ${DW_WRITER_PASSWORD:-agriprix_writer_local_dev}
+      DW_READONLY_USER: ${DW_READONLY_USER:-agriprix_api_readonly}
+      DW_READONLY_PASSWORD: ${DW_READONLY_PASSWORD:-agriprix_readonly_local_dev}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      API_BASE_URL: http://api:8000
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./data:/app/data
+      - mlflow_artifacts:/mlflow/artifacts
+    mem_limit: 1280m
+    cpus: 1.50
+    networks:
+      - agriprix-net
+
+volumes:
+  pgdata:
+    name: agriprix_pgdata
+  mlflow_artifacts:
+    name: agriprix_mlflow_artifacts
+
+networks:
+  agriprix-net:
+    name: agriprix_network
+    driver: bridge
