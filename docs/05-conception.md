@@ -119,15 +119,16 @@ Avec nos critères stricts (`frequency = 'MONTHLY'`, `is_observed = TRUE`, panie
    - Le score d'anomalie robuste est :
      $$z_{\text{robust}, t} = \frac{r_t}{\max(\hat{\sigma}_{\text{MAD}, m},\; 0{,}02)}$$
    - **Seuils** : $|z_{\text{robust}, t}| \ge 2{,}5 \rightarrow \text{'WARNING'}$ ; $|z_{\text{robust}, t}| \ge 3{,}5 \rightarrow \text{'CRITICAL'}$.
-4. **Protocole de validation *a priori* déplacé en test automatique CI (`pytest`) et limites d'un petit échantillon** :
-   - **Autocritique statistique** : 4 chocs choisis *après coup* constituent un échantillon trop restreint ($N=4$) et sujet au biais de sélection pour parler d'un rappel général de « 100 % ».
-   - **Catalogue élargi fixé *a priori* à partir de sources externes (5 crises majeures)** :
-     1. **`SHOCK-01` (2008-03..2008-09) — Crise alimentaire mondiale 2007–2008** (`SEN` Riz importé, `NER` Mil/Sorgho — *Source : FAO SOFI 2008 & PAM/CILSS 2008*).
-     2. **`SHOCK-02` (2012-03..2012-09) — Crise alimentaire et pastorale sahélienne de 2012** (`MLI`, `NER`, `BFA` Mil/Sorgho — *Source : RPCA / CILSS / FAO / PAM / FEWS NET 2012*).
-     3. **`SHOCK-03` (2020-04..2020-08) — Choc pandémique COVID-19 et fermetures de frontières** (`SEN`, `MLI`, `BFA`, `NER` Céréales — *Source : WFP RBD & RPCA/OCDE 2020*).
-     4. **`SHOCK-04` (2022-03..2022-11) — Choc inflationniste mondial et guerre en Ukraine** (`BFA`, `MLI`, `SEN` Céréales ; `MAR` IPC Alimentaire `23013` — *Sources : FAO-WFP Hunger Hotspots 2022 & HCP Maroc 2023*).
-     5. **`SHOCK-05` (2023-08..2024-03) — Crise des sanctions CEDEAO et fermeture des frontières au Niger** (`NER` Riz importé, Maïs, Mil — *Source : FEWS NET & WFP Niger Market Monitor 2023*).
-   - **Exécution dans la CI (et non comme porte bloquante mensuelle en production)** : un test automatique (`tests/unit/test_anomaly_reference_shocks.py`) génère le **rapport de rappel événement par événement** et vérifie le seuil documenté (**$\ge 80\%$ des épisodes de référence détectés** à $|z_{\text{robust}, t}| \ge 2{,}5$ et taux d'alertes hors crise $\le 10\%$).
+4. **Protocole de validation *a priori* déplacé en test automatique CI (`pytest`), liens vérifiables et règle d'intégrité scientifique** :
+   - **Autocritique statistique** : 4 chocs choisis *après coup* constituent un échantillon trop restreint ($N=4$, borne inférieure de Clopper-Pearson à $95\,\% = 39{,}8\,\%$) et sujet au biais de sélection pour parler d'un rappel général de « 100 % ».
+   - **Catalogue élargi fixé *a priori* à partir de sources externes vérifiables (5 crises majeures)** :
+     1. **`SHOCK-01` (2008-03..2008-09) — Crise alimentaire mondiale 2007–2008** (`SEN` Riz importé, `NER` Mil/Sorgho — *Source vérifiable : FAO SOFI 2008*, https://www.fao.org/4/i0291e/i0291e00.pdf).
+     2. **`SHOCK-02` (2012-03..2012-09) — Crise alimentaire et pastorale sahélienne de 2012** (`MLI`, `NER`, `BFA` Mil/Sorgho — *Source vérifiable : FEWS NET & CILSS 2012*, https://reliefweb.int/report/mali/joint-special-report-grain-market-outlook-west-africa).
+     3. **`SHOCK-03` (2020-04..2020-08) — Choc pandémique COVID-19 et fermetures de frontières** (`SEN`, `MLI`, `BFA`, `NER` Céréales — *Source vérifiable : WFP RBD & CILSS 2021*, https://reliefweb.int/report/burkina-faso/west-and-central-africa-market-situation-2020-and-2021-outlooks-march-2021).
+     4. **`SHOCK-04` (2022-03..2022-11) — Choc inflationniste mondial et guerre en Ukraine** (`BFA`, `MLI`, `SEN` Céréales ; `MAR` IPC Alimentaire `23013` — *Sources vérifiables : FAO-WFP Hunger Hotspots juin 2022*, https://www.fao.org/3/cb9236en/cb9236en.pdf ; *HCP Maroc IPC*, https://www.hcp.ma/Indices-des-prix-a-la-consommation_r102.html).
+     5. **`SHOCK-05` (2023-08..2024-03) — Crise des sanctions CEDEAO et fermeture des frontières au Niger** (`NER` Riz importé, Maïs, Mil — *Sources vérifiables : WFP Niger 12 août 2023*, https://reliefweb.int/report/niger/niger-preliminary-analysis-impacts-political-crisis-and-sanctions-food-security-and-markets-12-august-2023 ; *FEWS NET Niger Price Bulletin août 2023*, https://reliefweb.int/report/niger/niger-price-bulletin-august-2023).
+   - **Règle d'intégrité scientifique (*Zéro retouche opportuniste des seuils*)** : un épisode du catalogue non détecté au seuil fixé *a priori* ($|z_{\text{robust}, t}| \ge 2{,}5$) est **un résultat empirique à rapporter et expliquer tel quel**, et **jamais un motif pour abaisser ou ajuster les seuils après coup**.
+   - **Exécution dans la CI et retour au seuil hors-choc de $\le 5\,\%$** : un test automatique (`tests/unit/test_anomaly_reference_shocks.py`) génère le **rapport de rappel événement par événement** et vérifie le seuil documenté (et un taux d'alertes hors crise **$\le 5\,\%$**, cohérent avec la borne de spécificité de `KPI-M4` sous $|Z| \ge 2{,}5$).
 
 ---
 

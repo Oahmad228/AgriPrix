@@ -43,10 +43,12 @@ Nous retenons une **stratégie agnostique compatible à 100 % avec l'Option 1 (O
    - Dans le workflow GitHub Actions (`.github/workflows/ci.yml`), nous utilisons **`docker/setup-qemu-action`** (QEMU est un émulateur permettant de compiler du code ARM sur un serveur x86) et **`docker/setup-buildx-action`** (Docker Buildx est le moteur de construction avancé de Docker supportant plusieurs architectures simultanées).
    - Les images publiées sur **GitHub Container Registry (`ghcr.io`)** portent un manifeste multi-arch (`platforms: linux/amd64,linux/arm64`).
    - **Vérification des dépendances Python sur ARM64** : `PostgreSQL 16-alpine`, `Python 3.11-slim`, `LightGBM`, `scikit-learn`, `pandas`, `FastAPI` et `Streamlit` disposent tous de roues binaires pré-compilées (*manylinux aarch64 wheels*) sur PyPI, garantissant une construction rapide sans compilation C++ interminable.
-2. **Surcharge de production (`docker-compose.prod.yml`) et Reverse Proxy HTTPS (`Caddy`)** :
+2. **Surcharge de production (`docker-compose.prod.yml`), séparation des images par service et Reverse Proxy HTTPS (`Caddy`) au Sprint 4 (`US-16` — MVP)** :
+   - L'hébergement public en ligne (HTTPS) fait partie intégrante du **Cœur MVP (Sprint 4 — `US-16`)**, et non du Sprint 5 Bonus.
+   - Avant la mise en ligne au Sprint 4, la **dette technique identifiée dans `ADR-001`** (image unique `agriprix-app:latest` embarquant toutes les dépendances et les outils de dev `pytest`/`ruff`) est résorbée en séparant les cibles du `Dockerfile` par service (`runtime-api`, `runtime-dashboard`, `runtime-mlflow`, `runtime-jobs`) sans outils de développement dans les images de runtime.
    - En production sur la VM (Oracle ARM ou VPS), un fichier `docker-compose.prod.yml` ajoute un conteneur ultra-léger **Caddy (`caddy:2-alpine`, ~30 Mo de RAM)** agissant comme **Reverse Proxy** (serveur frontal qui reçoit le trafic Internet HTTPS sur le port 443, renouvelle automatiquement les certificats TLS Let's Encrypt, et redirige les requêtes vers Streamlit ou FastAPI).
-   - Les ports internes de PostgreSQL (`5432`) et MLflow (`5000`) sont liés uniquement au réseau Docker interne (`expose`) et jamais ouverts sur Internet (`0.0.0.0`).
-3. **Automatisation de la mise à jour mensuelle (`US-17`)** :
+   - Les ports internes de PostgreSQL (`5432`) et MLflow (`5000`) sont liés uniquement à `127.0.0.1` en local et au réseau Docker interne (`expose`) en production, jamais ouverts sur Internet (`0.0.0.0`).
+3. **Automatisation de la mise à jour mensuelle (`US-15` — Sprint 4 MVP)** :
    - Sur la VM d'hébergement, un **timer systemd / cron mensuel** exécute le 16 de chaque mois :
      `docker compose run --rm job-runner python -m src.pipeline.monthly_update`
      qui télécharge les nouveaux mois HDX/FAOSTAT, vérifie leur intégrité, met à jour l'entrepôt, réentraîne les modèles et rafraîchit les prévisions et anomalies.

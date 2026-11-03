@@ -286,3 +286,21 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
      - Fixation *a priori* d'une liste élargie à **5 épisodes historiques sourcés** (`SHOCK-01` Crise mondiale 2008, `SHOCK-02` Crise sahélienne 2012, `SHOCK-03` COVID-19 2020, `SHOCK-04` Inflation/Ukraine 2022, `SHOCK-05` Crise nigérienne CEDEAO 2023–2024) avec rapport du rappel **événement par événement**.
      - Déplacement de cette validation hors du pipeline mensuel de production vers un **test automatique de la CI (`pytest`)** avec seuil documenté ($\ge 80\,\%$ des épisodes de référence détectés à $|Z_{\text{rob}}| \ge 2{,}5$, taux d'alerte hors choc $\le 10\,\%$).
   5. **Procédure de déplacement hors du dossier `scratch` d'Antigravity** : documentée étape par étape (`docker compose down` sans `-v`, déplacement du dossier vers `C:\Users\Oahma\Projects\agriprix-observatory`, réouverture du workspace et `docker compose up -d`).
+
+### 3. Cinq correctifs finaux de Phase 3 avant ouverture du Sprint 1 (2026-11-03)
+1. **Liaison stricte des ports sur `127.0.0.1` (`docker-compose.yml`)** :
+   - Tous les ports publiés (`db: 5432`, `mlflow: 5000`, `api: 8000`, `dashboard: 8501`) sont désormais liés exclusivement à `127.0.0.1` (`127.0.0.1:5432->5432/tcp`, etc.) au lieu de `0.0.0.0`.
+   - Vérification via `git grep` : aucun mot de passe réel n'est présent dans le dépôt (seules les valeurs fictives de développement local `*_local_dev` dans `.env.example`, `docker-compose.yml`, `01-init.sql` et `src/config.py`).
+2. **Clarification du contenu du Sprint 5 vs Sprint 4 (Hébergement HTTPS dans le MVP)** :
+   - L'hébergement public en ligne derrière un Reverse Proxy HTTPS (`US-16`) fait partie du **MVP (Sprint 4)**, et non du bonus.
+   - Le **Sprint 5 (Bonus Post-MVP — +18h)** contient exclusivement : `US-17` (Prometheus + Grafana), `US-18` (Kubernetes local `k3s`/`kind` + `CronJob`), `US-19` (BI Metabase en lecture seule) et `US-20` (Conversion active de devises `EUR`/`USD` sous Feature Flag).
+   - La table de coupes est alignée à 100 % sur `docs/04-backlog.md` (Section 4.2 : Coupes n°1 à n°4).
+3. **Verrouillage exact des dépendances (`requirements.lock`) et Dette technique (`ADR-001`, `ADR-007`)** :
+   - Génération de `requirements.lock` (115 paquets figés aux versions exactes installées dans le conteneur Python 3.11) pour garantir la reproductibilité (`ENF-03`).
+   - Documentation explicite de la dette technique dans `ADR-001` et `ADR-007` : l'image unique `agriprix-app:latest` (contenant aussi les outils de dev `pytest`/`ruff`) sera découpée en images multi-étapes par service (`runtime-api`, `runtime-dashboard`, `runtime-mlflow`, `runtime-jobs`, et `dev`) au Sprint 4 (`US-16`) avant l'hébergement en ligne.
+4. **Validation du détecteur d'anomalies (`ADR-003`, `05-conception.md`, `03`, `04`)** :
+   - Ajout d'un lien officiel vérifiable (`fao.org`, `reliefweb.int`, `hcp.ma`) pour chacun des 5 chocs historiques (`SHOCK-01` à `SHOCK-05`).
+   - Règle d'intégrité scientifique inscrite dans `ADR-003` et `05-conception.md` : un épisode non détecté au seuil fixé *a priori* ($|Z_{\text{rob}}| \ge 2{,}5$) est un résultat empirique à rapporter tel quel, et **jamais** un motif d'ajuster les seuils après coup.
+   - Retour du seuil d'alerte hors période de choc à **$\le 5\,\%$** (conforme à `KPI-M4` et à la queue théorique de $|Z| \ge 2{,}5$, au lieu de $10\,\%$).
+5. **Vérification de `.gitignore` sur `data/raw/`** :
+   - Confirmé par `git check-ignore -v data/raw/wfp_SEN.csv` (`.gitignore:37:data/raw/*`) et `git ls-files data/` (seuls les `.gitkeep` sont suivis, aucun CSV n'est commité).
