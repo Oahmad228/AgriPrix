@@ -10,7 +10,9 @@ def run_etl_status() -> dict[str, str]:
     settings = get_settings()
     logging.basicConfig(level=settings.log_level)
     logger = logging.getLogger("agriprix.etl")
-    logger.info("AgriPrix ETL CLI ready for database %s on host %s", settings.dw_db, settings.postgres_host)
+    logger.info(
+        "AgriPrix ETL CLI ready for database %s on host %s", settings.dw_db, settings.postgres_host
+    )
     return {
         "pipeline": "etl",
         "status": "ready",

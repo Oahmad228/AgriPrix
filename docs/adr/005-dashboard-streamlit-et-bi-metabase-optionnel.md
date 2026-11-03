@@ -1,7 +1,7 @@
 # ADR-005 : Interface principale Streamlit découplée via FastAPI et BI Metabase en option (Sprint 5)
 
 - **Statut** : Accepté
-- **Date** : 2026-04-19
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
 - **Exigences liées** : `EF-14`, `EF-15`, `EF-16`, `ENF-01`, `US-14`, `US-15`, `US-20`
 
@@ -9,7 +9,7 @@
 
 ## 1. Contexte et Problème
 
-Le projet AgriPrix Observatory doit fournir une interface visuelle permettant aux deux personas (Kofi l'analyste humanitaire et Yasmine la chargée d'études économiques) de :
+Le projet AgriPrix Observatory doit fournir une interface visuelle permettant aux trois personas du projet (**Fatou**, 42 ans, Coordinatrice Sécurité Alimentaire & Achats ONG — « La Décideuse » ; **Youssef**, 29 ans, Analyste Marchés & SI Décisionnel — « L'Analyste MIAGE / Data » ; **Moussa**, 37 ans, Gérant d'une Union de Coopératives Céréalières — « L'Acteur Économique de Terrain ») de :
 1. Visualiser la carte interactive des marchés et des alertes d'anomalies.
 2. Explorer les séries historiques avec affichage du `pricetype = 'Retail'` par défaut, superposition des prévisions à $t+1, t+3, t+6$ mois et de leurs intervalles conformes à 80 %, ou consultation des séries non éligibles avec bandeau explicatif.
 3. Télécharger les données filtrées en CSV.

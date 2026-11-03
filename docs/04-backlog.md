@@ -106,11 +106,11 @@ Notre **Backlog Produit** (*liste ordonnée et priorisée de toutes les fonction
 
 ### EPIC-3 — Détection d'Anomalies Validée & API REST FastAPI Sécurisée (Sprint 3)
 
-#### US-10 : Détection d'anomalies saisonnières et validation sur chocs historiques connus (2007–2008 et 2022)
-- **Énoncé** : *En tant que* **Coordinatrice ONG (Fatou)** et **Data Scientist (Youssef)**, *je veux* que le détecteur repère les chocs anormaux par rapport à la saisonnalité de chaque série mensuelle, génère une explication en français simple, et soit **validé sur des chocs historiques documentés** (crise mondiale 2007–2008 et crise inflationniste 2022) en mesurant le **taux de détection** et le **taux de fausses alertes en période calme**, *afin de* prouver que les alertes sont fiables.
+#### US-10 : Détection d'anomalies saisonnières et validation CI sur un catalogue *a priori* de crises historiques (2008, 2012, 2020, 2022, 2023–2024)
+- **Énoncé** : *En tant que* **Coordinatrice ONG (Fatou)** et **Data Scientist (Youssef)**, *je veux* que le détecteur repère les chocs anormaux par rapport à la tendance et la saisonnalité de chaque série mensuelle ($\ge 5\text{ ans}$, $\text{MAD} \times 1{,}4826$), génère une explication en français simple, et soit **validé dans un test automatique de la CI (`pytest`) sur un catalogue fixé *a priori* de 5 crises historiques documentées** (`2007–2008`, `2012 Crise sahélienne`, `2020 COVID-19`, `2022 Inflation/Ukraine`, `2023–2024 Sanctions Niger`) en rapportant le **rappel événement par événement** et le **taux d'alertes en période calme**, *afin de* vérifier la non-régression du détecteur sans bloquer artificiellement le pipeline mensuel de production.
 - **Priorité MoSCoW** : **Must (MVP)** | **Exigences liées** : `EF-11`, `SMART-03`, `KPI-M4`
 - **Critères d'acceptation** :
-  1. *Quand* on exécute le test de validation des anomalies, *alors* le détecteur identifie les chocs historiques documentés (ex. flambée de `+103,5 %` sur le riz importé à Dakar/Tilène en août 2008, `+58,9 %` sur le mil à Maradi en août 2008, `+88,0 %` sur le mil à Ouagadougou/Sankaryaré en août 2022, et pic d'inflation alimentaire au Maroc fin 2022) et calcule le taux de détection ainsi que le pourcentage d'alertes sur la période calme de référence (2015–2018).
+  1. *Quand* `make test` s'exécute dans la CI, *alors* le test automatique d'évaluation du détecteur s'exécute sur le catalogue fixé *a priori* (`SHOCK-01` 2008 à `SHOCK-05` 2023–2024), génère un tableau de rappel événement par événement, et vérifie le seuil documenté ($\ge 80\%$ des crises détectées à $|Z_{\text{rob}}| \ge 2{,}5$ et taux d'alerte hors crise $\le 10\%$).
 
 #### US-11 : API REST FastAPI sécurisée (Lecture seule PostgreSQL, Rate Limiting, CORS restreint)
 - **Énoncé** : *En tant qu'* **Ingénieur Logiciel (Amine)**, *je veux* que l'API FastAPI se connecte à PostgreSQL exclusivement avec l'utilisateur en lecture seule `agriprix_readonly`, applique une limitation du débit (*Rate Limiting*) par IP et restreigne les origines *CORS*, *afin de* pouvoir exposer la démo publique sur Internet en toute sécurité.
@@ -139,7 +139,7 @@ Notre **Backlog Produit** (*liste ordonnée et priorisée de toutes les fonction
 - **Énoncé** : *En tant qu'* **Analyste MIAGE (Youssef)**, *je veux* un onglet dédié dans Streamlit permettant d'inspecter les métriques des modèles par horizon ($H+1, H+3, H+6$), le **PICP** mesuré sur le jeu de test, les résultats de validation du détecteur d'anomalies sur les crises 2008/2022, ainsi que les séries historiques annuelles du Maroc (`MAD/tonne`) et les séries ivoiriennes (`aggregate`), *afin d'* auditer toute la chaîne méthodologique.
 - **Priorité MoSCoW** : **Must (MVP)** | **Exigences liées** : `EF-15`
 - **Critères d'acceptation** :
-  1. *Quand* j'ouvre la Vue Analyste, *alors* tous les chiffres affichés proviennent dynamiquement de l'API FastAPI (alimentée par les exécutions réelles) et les licences `CC BY-IGO` / `CC BY 4.0` sont affichées.
+  1. *Quand* j'ouvre la Vue Analyste, *alors* tous les chiffres affichés proviennent dynamiquement de l'API FastAPI (alimentée par les exécutions réelles) et les licences `CC BY-IGO 3.0` / `CC BY 4.0` sont affichées.
 
 #### US-15 : Mise à jour mensuelle automatisée (Planificateur ETL + Réentraînement ML)
 - **Énoncé** : *En tant qu'* **Exploitant de la plateforme (Amine)**, *je veux* qu'une tâche planifiée mensuelle exécute automatiquement la collecte ETL, les tests de qualité et le réentraînement des modèles de prévision et d'anomalies, *afin que* l'observatoire se mette à jour chaque mois sans intervention manuelle.

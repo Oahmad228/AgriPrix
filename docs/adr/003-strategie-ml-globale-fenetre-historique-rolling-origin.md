@@ -1,9 +1,9 @@
-# ADR-003 : Stratégie ML globale (19 groupes), absence d'imputation (`NaN`), sélection sur Fenêtres 1–2, test final sur Fenêtre 3 et métriques `MASE` / `RelMAE`
+# ADR-003 : Stratégie ML globale (19 groupes), absence d'imputation (`NaN`), sélection sur Fenêtres 1–2, test final sur Fenêtre 3, métriques `MASE` / `RelMAE` et validation CI du détecteur d'anomalies
 
-- **Statut** : Accepté (Révisé en fin de Phase 2)
-- **Date** : 2026-04-19
+- **Statut** : Accepté (Révisé en Phase 3)
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
-- **Exigences liées** : `SMART-02`, `EF-07`, `EF-08`, `EF-09`, `EF-11`, `ENF-01`, `ENF-03`
+- **Exigences liées** : `SMART-02`, `SMART-03`, `EF-07`, `EF-08`, `EF-09`, `EF-11`, `EF-12`, `EF-13`, `ENF-01`, `ENF-03`
 
 ---
 
@@ -53,3 +53,19 @@ Nous distinguons et calculons explicitement deux métriques complémentaires :
 ### 2.5 Nombre exact de runs MLflow et table `training_run`
 - Chaque exécution de `make train` ouvre **1 run parent MLflow** (lié à `training_run.run_id` et `git_sha`) et exactement **$19 \text{ groupes} \times 3 \text{ familles de modèles} = \mathbf{57\text{ runs enfants MLflow}}$** (**58 runs au total** dans la base isolée `mlflow_db`).
 - Les métriques détaillées par série (`MASE`, `RelMAE_h`, `MAPE`, `RMSE`, `PICP_80`) sont enregistrées dans `fact_model_metrics_by_series` avec la contrainte `UNIQUE (run_id, series_id, model_name, horizon_months, eval_window)`.
+
+### 2.6 Validation *a priori* du détecteur d'anomalies en CI (et reconnaissance des limites d'un petit échantillon)
+- **Autocritique méthodologique (Pourquoi 4 chocs choisis après coup ne permettent pas de parler de « 100 % de rappel »)** :
+  1. Choisir 4 épisodes historiques *après* avoir inspecté les courbes crée un **biais de sélection (*cherry-picking* post-hoc)**.
+  2. D'un point de vue statistique, un échantillon de $N = 4$ événements est beaucoup trop petit pour affirmer un rappel général de « 100 % » (selon l'intervalle de confiance exact de Clopper-Pearson à 95 %, observer $4/4$ succès est compatible avec un rappel réel aussi bas que $39,8\%$).
+- **Protocole corrigé retenu** :
+  1. **Liste de chocs de référence fixée *a priori* à partir de la littérature externe** (avant d'inspecter la sortie du détecteur) et élargie à **5 crises majeures documentées (déclinées en 9 couples Épisode × Pays/Produit)** :
+     - **`SHOCK-01` (2008-03 à 2008-09) — Crise alimentaire mondiale 2007–2008** : flambée du riz importé au Sénégal (`SEN`) et du mil/sorgho au Niger (`NER`) — *Sources : FAO (2008), State of Food Insecurity in the World ; PAM/CILSS (2008)*.
+     - **`SHOCK-02` (2012-03 à 2012-09) — Crise alimentaire et pastorale sahélienne de 2012** : flambée du mil et du sorgho au Mali (`MLI`), au Niger (`NER`) et au Burkina Faso (`BFA`) suite à la sécheresse 2011/2012 et au conflit au Nord-Mali — *Sources : RPCA / CILSS / FAO / PAM / FEWS NET (2012), Crise alimentaire et nutritionnelle au Sahel*.
+     - **`SHOCK-03` (2020-04 à 2020-08) — Choc pandémique COVID-19 et fermetures de frontières** : tensions sur le riz et les céréales sèches (`SEN`, `MLI`, `BFA`, `NER`) lors des restrictions de circulation du printemps-été 2020 — *Source : WFP Regional Bureau Dakar & RPCA / OCDE (2020), COVID-19 Impact on West African Markets*.
+     - **`SHOCK-04` (2022-03 à 2022-11) — Choc inflationniste mondial et guerre en Ukraine** : flambée des céréales au Burkina Faso (`BFA`), au Mali (`MLI`) et au Sénégal (`SEN`), et pic d'inflation de l'IPC Alimentaire au Maroc (`MAR`, série `23013`) — *Sources : FAO-WFP Hunger Hotspots (2022) ; HCP Maroc (2023), Note annuelle IPC 2022*.
+     - **`SHOCK-05` (2023-08 à 2024-03) — Crise des sanctions CEDEAO et fermeture des frontières au Niger** : hausse brutale du riz importé et des céréales locales au Niger (`NER`) après juillet 2023 — *Sources : FEWS NET & WFP Niger Market Monitor (Q3–Q4 2023)*.
+  2. **Rapport événement par événement** : Le rapport d'évaluation affiche une table détaillée **événement par événement** (statut détecté `OUI/NON`, $|Z_{\text{rob}}|$ maximal atteint, part des marchés en alerte dans le groupe, et taux d'alerte hors période de crise), suivie du rappel global sur le catalogue ($K / N$ épisodes détectés).
+  3. **Déplacement hors du pipeline mensuel de production vers un test automatique de la CI (`pytest`)** :
+     - Vérifier des chocs passés (2008, 2012, 2020, 2022, 2023) comme porte bloquante à chaque exécution mensuelle en production (`make train`) n'a pas de sens opérationnel puisque l'historique passé est figé.
+     - Cette validation est donc déplacée dans un **test automatique d'intégration exécuté par la CI (`make test`)** qui génère le rapport événement par événement et vérifie un seuil de non-régression documenté (**rappel $\ge 80\%$ sur le catalogue de chocs de référence** avec $|Z_{\text{rob}}| \ge 2.5$ et **taux d'alerte en année calme $\le 10\%$**).

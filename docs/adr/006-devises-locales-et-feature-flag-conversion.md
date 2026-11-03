@@ -1,7 +1,7 @@
 # ADR-006 : Gestion des devises locales (`XOF`, `MAD`), des indices (`INDEX`) et conversion à la demande sous *Feature Flag*
 
 - **Statut** : Accepté
-- **Date** : 2026-04-19
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
 - **Exigences liées** : `EF-05`, `EF-06`, `EF-07`, `US-04`, `US-06`
 

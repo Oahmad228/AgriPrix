@@ -11,8 +11,9 @@
 ```mermaid
 flowchart TB
     %% Utilisateurs & Clients externes
-    Analyst["👤 Analyste Sécurité Alimentaire<br/>[Personne : Kofi - PAM / ONG]<br/><i>Identifie les tensions de marché et<br/>anticipe les achats avant la soudure</i>"]
-    Decider["🏛️ Chargée d'Études Économiques<br/>[Personne : Yasmine - Ministère]<br/><i>Compare la dynamique des prix locaux<br/>et prépare les bulletins d'alerte</i>"]
+    Decider["🏛️ Coordinatrice Sécurité Alimentaire & Achats ONG<br/>[Personne : Fatou - PAM / ONG Humanitaire]<br/><i>Identifie les tensions de marché et<br/>anticipe les achats avant la soudure</i>"]
+    Analyst["👤 Analyste Marchés & SI Décisionnel<br/>[Personne : Youssef - Ministère / Observatoire]<br/><i>Compare la dynamique des prix, audite la fiabilité<br/>des modèles et prépare les bulletins d'alerte</i>"]
+    Coop["🌾 Gérant d'Union de Coopératives Céréalières<br/>[Personne : Moussa - Acteur de Terrain]<br/><i>Compare les prix de détail et de gros entre marchés<br/>pour arbitrer le déstockage</i>"]
     ThirdParty["💻 Développeur / Système Tiers<br/>[Personne ou Système Externe]<br/><i>Consomme l'API REST JSON (/prices, /forecasts,<br/>/anomalies) pour ses propres analyses</i>"]
     AdminOps["🛠️ Administrateur Data / MLOps<br/>[Personne : Rôle Exploitation & Ingénierie]<br/><i>Supervise l'ETL, l'entraînement ML,<br/>la qualité des données et le CI/CD</i>"]
 
@@ -22,14 +23,15 @@ flowchart TB
     end
 
     %% Systèmes Externes
-    HDX["🌐 <b>UN OCHA HDX / WFP VAM</b><br/>[Système Externe - Open Data CC BY 4.0]<br/><i>API CKAN & Fichiers CSV mensuels des prix<br/>alimentaires sur 207 marchés (SEN, MLI, BFA, NER, CIV)</i>"]
+    HDX["🌐 <b>UN OCHA HDX / WFP VAM</b><br/>[Système Externe - Open Data CC BY-IGO 3.0]<br/><i>API CKAN & Fichiers CSV mensuels des prix alimentaires<br/>sur 366 marchés du panier (dont 183 marchés éligibles ML)<br/>dans 5 pays (SEN, MLI, BFA, NER, CIV)</i>"]
     FAO["🌐 <b>FAOSTAT Bulk Repository</b><br/>[Système Externe - Open Data CC BY 4.0]<br/><i>Archives ZIP officielles pour le Maroc :<br/>IPC alimentaire mensuel (base 2015=100)<br/>et Prix producteurs annuels (MAD/t)</i>"]
     GHA["⚙️ <b>GitHub Actions (CI/CD)</b><br/>[Système Externe - Intégration Continue]<br/><i>Exécute les tests pytest/ruff, compile les images<br/>multi-arch (amd64 + arm64) et déclenche la mise à jour</i>"]
     GHCR["📦 <b>GitHub Container Registry (GHCR)</b><br/>[Système Externe - Registre d'Images OCI]<br/><i>Héberge les images Docker multi-architecture<br/>(linux/amd64 et linux/arm64)</i>"]
 
     %% Interactions Utilisateurs -> Système
-    Analyst -- "Consulte les cartes, prévisions (t+1..6)<br/>et exporte les CSV [HTTPS]" --> AgriPrix
-    Decider -- "Consulte les alertes d'anomalies<br/>et les séries nationales/marchés [HTTPS]" --> AgriPrix
+    Decider -- "Consulte les cartes, prévisions (t+1..6)<br/>et exporte les CSV [HTTPS]" --> AgriPrix
+    Analyst -- "Consulte les alertes d'anomalies, métriques ML<br/>et les séries nationales/marchés [HTTPS]" --> AgriPrix
+    Coop -- "Consulte les écarts de prix par marché<br/>et les tendances à 1-6 mois [HTTPS]" --> AgriPrix
     ThirdParty -- "Interroge /api/v1/prices, /forecasts,<br/>/anomalies, /metadata [HTTPS JSON]" --> AgriPrix
     AdminOps -- "Déclenche make up / etl / train<br/>et inspecte les runs MLflow [CLI / HTTPS]" --> AgriPrix
 
@@ -48,7 +50,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     %% Acteurs externes
-    UserWeb["👤 Utilisateurs Web (Kofi & Yasmine)<br/>[Navigateur HTTPS]"]
+    UserWeb["👤 Utilisateurs Web (Fatou, Youssef & Moussa)<br/>[Navigateur HTTPS]"]
     ClientAPI["💻 Développeur / Système Tiers<br/>[Client HTTP REST]"]
     ExtData["🌐 Serveurs Open Data<br/>[HDX CKAN API & FAOSTAT S3 Bulk]"]
 

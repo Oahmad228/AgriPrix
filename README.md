@@ -11,12 +11,12 @@
 
 ## 🎯 Problématique et Périmètre (Données Réelles Auditées)
 
-Dans la région du Sahel et d'Afrique de l'Ouest (**Sénégal `SEN`, Mali `MLI`, Burkina Faso `BFA`, Niger `NER`, Côte d'Ivoire `CIV`**) ainsi qu'au **Maroc (`MAR`)**, les dépenses alimentaires représentent entre **35 % et plus de 65 %** du budget des ménages. Les données publiques de prix alimentaires existent sous licence ouverte (**CC BY 4.0** via **UN OCHA HDX / PAM-WFP** et **FAOSTAT**), mais restent fragmentées et dépourvues de prévisions multi-horizons probabilistes en libre accès.
+Dans la région du Sahel et d'Afrique de l'Ouest (**Sénégal `SEN`, Mali `MLI`, Burkina Faso `BFA`, Niger `NER`, Côte d'Ivoire `CIV`**) ainsi qu'au **Maroc (`MAR`)**, les dépenses alimentaires représentent entre **35 % et plus de 65 %** du budget des ménages. Les données publiques de prix alimentaires existent sous licence ouverte (**CC BY-IGO 3.0** via **UN OCHA HDX / PAM-WFP** et **CC BY 4.0** via **FAOSTAT**), mais restent fragmentées et dépourvues de prévisions multi-horizons probabilistes en libre accès.
 
 **AgriPrix Observatory** unifie et modélise **333 924 observations historiques** :
-- **Afrique de l'Ouest (UEMOA — Source WFP/HDX)** : **324 040 observations mensuelles** sur **207 marchés**, dont **737 séries `Retail` éligibles à la prévision ML** réparties dans **18 groupes `(Pays, Produit)`** sur 4 pays (`SEN` : 45, `MLI` : 230, `BFA` : 275, `NER` : 187 ; la Côte d'Ivoire `CIV` étant maintenue en consultation historique seule en raison de `37,49 %` de lignes modélisées `aggregate` entre 2020 et 2026).
-- **Maroc (`MAR` — Source FAOSTAT Bulk)** : **1 série nationale mensuelle d'Indice des Prix à la Consommation Alimentaire (`Item 23013`, base `2015 = 100`, 318 mois continus)** éligible à la prévision ML (+ **367 séries annuelles** de prix producteurs agricoles, soit **8 942 observations** en consultation historique seule sans mois inventé).
-- **Total des séries prédites à $t+1, t+3, t+6$ mois** : **738 séries mensuelles dans 19 groupes**, évaluées en *Rolling-Origin* (sélection du modèle champion sur les Fenêtres 1–2 incluant le choc de 2022, rapport final sur la Fenêtre 3 `2025–2026`) avec **intervalles de prédiction conformes à 80 %** calibrés sur les erreurs relatives par groupe.
+- **Afrique de l'Ouest (UEMOA — Source WFP/HDX, licence `CC BY-IGO 3.0`)** : **324 040 observations mensuelles** couvrant **366 marchés dans le panier de sécurité alimentaire**, dont **183 marchés actifs éligibles à la prévision ML** regroupant **737 séries `Retail`** réparties dans **18 groupes `(Pays, Produit)`** sur 4 pays (`SEN` : 45, `MLI` : 230, `BFA` : 275, `NER` : 187 ; la Côte d'Ivoire `CIV` étant maintenue en consultation historique seule en raison de `37,49 %` de lignes modélisées `aggregate` entre 2020 et 2026).
+- **Maroc (`MAR` — Source FAOSTAT Bulk, licence `CC BY 4.0`)** : **1 série nationale mensuelle d'Indice des Prix à la Consommation Alimentaire (`Item 23013`, base `2015 = 100`, 318 mois continus)** éligible à la prévision ML (+ **367 séries annuelles** de prix producteurs agricoles, soit **8 942 observations** en consultation historique seule sans mois inventé).
+- **Total des séries prédites à $t+1, t+3, t+6$ mois** : **738 séries mensuelles dans 19 groupes**, évaluées en *Rolling-Origin* (sélection du modèle champion sur les Fenêtres 1–2 incluant le choc de 2022, rapport final sur la Fenêtre 3 `2025–2026`) avec **intervalles de prédiction conformes à 80 %** calibrés sur les erreurs relatives par groupe, et un **détecteur d'anomalies robuste** ($\ge 5\text{ ans}$, résidu log-tendance-saisonnalité, $\text{MAD} \times 1{,}4826$) validé en CI sur un catalogue *a priori* de 5 crises historiques documentées (`2007–2008`, `2012 Crise sahélienne`, `2020 COVID-19`, `2022 Inflation/Ukraine`, `2023–2024 Sanctions Niger`).
 
 ---
 
@@ -77,4 +77,4 @@ make down     # Arrête proprement les conteneurs
 
 ## 📄 Licence
 
-Distribué sous licence **MIT**. Voir [`LICENSE`](LICENSE). Données sources sous licence ouverte **CC BY 4.0** (WFP / UN OCHA HDX et FAOSTAT).
+Distribué sous licence **MIT**. Voir [`LICENSE`](LICENSE). Données sources sous licences ouvertes **CC BY-IGO 3.0** (WFP / UN OCHA HDX) et **CC BY 4.0** (FAOSTAT).

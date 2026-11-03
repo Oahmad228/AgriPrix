@@ -35,7 +35,9 @@ def main() -> None:
     col1, col2, col3 = st.columns(3)
     col1.metric("Statut API FastAPI", str(health.get("status", "unknown")).upper())
     db_info = health.get("database", {})
-    db_status = "CONNECTÉ (RO)" if isinstance(db_info, dict) and db_info.get("connected") else "EN ATTENTE"
+    db_status = (
+        "CONNECTÉ (RO)" if isinstance(db_info, dict) and db_info.get("connected") else "EN ATTENTE"
+    )
     col2.metric("Entrepôt PostgreSQL (agriprix_dw)", db_status)
     col3.metric("Périmètre Cible ML", "738 séries (19 groupes)")
 

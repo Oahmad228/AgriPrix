@@ -1,9 +1,9 @@
 # 05 — Analyse et Conception Technique & Méthodologique (Phase 2 — Révisée)
 
 > **Projet** : AgriPrix Observatory  
-> **Phase** : Phase 2 — Analyse et conception (Version consolidée après revue d'ingénierie)  
+> **Phase** : Phase 2 — Analyse et conception (Version consolidée après revue d'ingénierie en Phase 3)  
 > **Auteurs** : Amine & Ingénieur Logiciel/Data Junior  
-> **Date de dernière mise à jour** : 19 avril 2026  
+> **Date de dernière mise à jour** : 2026-11-03  
 
 ---
 
@@ -28,13 +28,13 @@ Conformément à la contrainte n°6, tous les diagrammes sont écrits en code **
 
 | Réf. | Fichier | Type de diagramme | Ce qu'il modélise |
 | :---: | :--- | :--- | :--- |
-| **D-01** | [`01-cas-utilisation.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/01-cas-utilisation.md) | UML Cas d'utilisation | Les 4 acteurs (Analyste Kofi, Décideur Yasmine, **Développeur / Système Tiers**, Planificateur) et 13 cas d'utilisation (`UC-04` lisant le drapeau pré-calculé `is_ml_eligible` sans relancer `UC-11`). |
-| **D-02** | [`02-processus-bpmn.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/02-processus-bpmn.md) | BPMN 2.0 (Couloirs Mermaid) | 3 processus métier : (1) ETL avec 2 passerelles d'intégrité (`DQ-01`/`DQ-02`) et `ref_unit_conversion`, (2) Prévision ML sur 19 groupes (sélection sur Fenêtres 1–2, rapport sur Fenêtre 3, sans imputation), (3) Anomalies ($\ge 5\text{ ans}$, résidu log-tendance-saisonnalité, $\text{MAD} \times 1{,}4826$ et validation chocs 2008/2022). |
+| **D-01** | [`01-cas-utilisation.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/01-cas-utilisation.md) | UML Cas d'utilisation | Les 5 acteurs (Personas **Fatou**, **Youssef** et **Moussa**, **Développeur / Système Tiers**, Planificateur) et 13 cas d'utilisation (`UC-04` lisant le drapeau pré-calculé `is_ml_eligible` sans relancer `UC-11`). |
+| **D-02** | [`02-processus-bpmn.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/02-processus-bpmn.md) | BPMN 2.0 (Couloirs Mermaid) | 3 processus métier : (1) ETL avec 2 passerelles d'intégrité (`DQ-01`/`DQ-02`) et `ref_unit_conversion`, (2) Prévision ML sur 19 groupes (sélection sur Fenêtres 1–2, rapport sur Fenêtre 3, sans imputation), (3) Anomalies ($\ge 5\text{ ans}$, résidu log-tendance-saisonnalité, $\text{MAD} \times 1{,}4826$ ; validation des chocs historiques déportée en test CI `pytest`). |
 | **D-03** | [`03-diagramme-classes.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/03-diagramme-classes.md) | UML Classes du domaine | Le modèle objet aligné sur l'entrepôt : `RefUnitConversion`, `TrainingRun`, `ConformalQuantiles`, `EtlRunAudit`, `AuditRejectedRow`, `SourceFlag` + `is_observed`. |
 | **D-04** | [`04-diagrammes-sequence.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/04-diagrammes-sequence.md) | UML Séquence (x3) | Chronologie exacte des appels pour : (1) `make etl`, (2) `make train` avec filtre `WHERE is_ml_eligible = TRUE AND is_observed = TRUE` (incluant l'IPC Maroc) et base `mlflow_db` isolée, (3) Requête client `Streamlit / Tiers -> FastAPI -> PostgreSQL RO`. |
-| **D-05** | [`05-activite-pipeline.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/05-activite-pipeline.md) | UML Activité | Pipeline de bout en bout aligné sur le BPMN (2 passerelles d'intégrité, 5 portes d'éligibilité ML $\rightarrow$ 738 séries dans 19 groupes, validation des chocs 2008/2022). |
+| **D-05** | [`05-activite-pipeline.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/05-activite-pipeline.md) | UML Activité | Pipeline de bout en bout aligné sur le BPMN (2 passerelles d'intégrité, 5 portes d'éligibilité ML $\rightarrow$ 738 séries dans 19 groupes ; validation *a priori* des 5 crises historiques en test CI). |
 | **D-06** | [`06-modele-donnees.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/06-modele-donnees.md) | Merise MCD/MLD & MPD Étoile | Schéma en étoile sous PostgreSQL 16 avec FK composites `(series_id, frequency)`, `(calendar_id, frequency)` et `(market_code, country_iso3)`, `ref_unit_conversion`, `training_run`, `fact_conformal_quantiles`, `etl_run_audit`, `audit_rejected_rows`. |
-| **D-07** | [`07-architecture-c4.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/07-architecture-c4.md) | C4 (C1 Contexte + C2 Conteneurs) | Contexte (4 rôles génériques, flux exacts `GHA -> GHCR <- AgriPrix`) et Conteneurs (séparation `agriprix_dw` vs `mlflow_db`, MVP $\le 3{,}25\text{ Go}$ RAM vs Bonus Sprint 5). |
+| **D-07** | [`07-architecture-c4.md`](file:///C:/Users/Oahma/.gemini/antigravity/scratch/agriprix-observatory/docs/diagrams/07-architecture-c4.md) | C4 (C1 Contexte + C2 Conteneurs) | Contexte (Personas `Fatou`, `Youssef`, `Moussa`, licences `CC BY-IGO 3.0` WFP / `CC BY 4.0` FAOSTAT, 366 marchés du panier dont 183 éligibles ML, flux `GHA -> GHCR <- AgriPrix`) et Conteneurs (séparation `agriprix_dw` vs `mlflow_db`, MVP $\le 3{,}25\text{ Go}$ RAM vs Bonus Sprint 5). |
 
 ---
 
@@ -102,7 +102,7 @@ Avec nos critères stricts (`frequency = 'MONTHLY'`, `is_observed = TRUE`, panie
 
 ---
 
-### 3.2 Détection d'anomalies : Définition unique sur $\ge 5\text{ ans}$ ($\text{MAD} \times 1{,}4826$) et Validation sur les chocs 2007–2008 et 2022
+### 3.2 Détection d'anomalies : Définition unique sur $\ge 5\text{ ans}$ ($\text{MAD} \times 1{,}4826$) et Protocole de validation *a priori* en CI
 1. **Périmètre** : Séries mensuelles (`frequency = 'MONTHLY'`, `is_observed = TRUE`) disposant d'au moins **60 mois (5 ans)** d'observations (afin d'avoir au minimum 5 points par mois calendaire $m \in \{1..12\}$).
 2. **Définition mathématique unique de la valeur attendue ($\hat{P}_{\text{expected}, t}$)** :
    - Soit $L_t = \ln(P_t)$ le logarithme népérien du prix (ou de l'indice) observé au mois $t = (y, m)$.
@@ -119,8 +119,15 @@ Avec nos critères stricts (`frequency = 'MONTHLY'`, `is_observed = TRUE`, panie
    - Le score d'anomalie robuste est :
      $$z_{\text{robust}, t} = \frac{r_t}{\max(\hat{\sigma}_{\text{MAD}, m},\; 0{,}02)}$$
    - **Seuils** : $|z_{\text{robust}, t}| \ge 2{,}5 \rightarrow \text{'WARNING'}$ ; $|z_{\text{robust}, t}| \ge 3{,}5 \rightarrow \text{'CRITICAL'}$.
-4. **Étape intégrée de validation sur les chocs historiques documentés (2007–2008 et 2022)** :
-   - Le pipeline vérifie automatiquement que les 4 chocs de référence (`SEN Tilène Dakar Rice imported` août 2008 [+103,5 %] & août 2022 [+47,3 %], `NER Maradi Millet` août 2008 [+58,9 %], `BFA Sankaryaré Ouagadougou Millet` août 2022 [+88,0 %], `MAR National Food CPI` fin 2022 [+15,5 %]) sont tous détectés (Rappel $= 100\%$) et que le taux d'alertes `CRITICAL` hors crise reste $\le 5\%$.
+4. **Protocole de validation *a priori* déplacé en test automatique CI (`pytest`) et limites d'un petit échantillon** :
+   - **Autocritique statistique** : 4 chocs choisis *après coup* constituent un échantillon trop restreint ($N=4$) et sujet au biais de sélection pour parler d'un rappel général de « 100 % ».
+   - **Catalogue élargi fixé *a priori* à partir de sources externes (5 crises majeures)** :
+     1. **`SHOCK-01` (2008-03..2008-09) — Crise alimentaire mondiale 2007–2008** (`SEN` Riz importé, `NER` Mil/Sorgho — *Source : FAO SOFI 2008 & PAM/CILSS 2008*).
+     2. **`SHOCK-02` (2012-03..2012-09) — Crise alimentaire et pastorale sahélienne de 2012** (`MLI`, `NER`, `BFA` Mil/Sorgho — *Source : RPCA / CILSS / FAO / PAM / FEWS NET 2012*).
+     3. **`SHOCK-03` (2020-04..2020-08) — Choc pandémique COVID-19 et fermetures de frontières** (`SEN`, `MLI`, `BFA`, `NER` Céréales — *Source : WFP RBD & RPCA/OCDE 2020*).
+     4. **`SHOCK-04` (2022-03..2022-11) — Choc inflationniste mondial et guerre en Ukraine** (`BFA`, `MLI`, `SEN` Céréales ; `MAR` IPC Alimentaire `23013` — *Sources : FAO-WFP Hunger Hotspots 2022 & HCP Maroc 2023*).
+     5. **`SHOCK-05` (2023-08..2024-03) — Crise des sanctions CEDEAO et fermeture des frontières au Niger** (`NER` Riz importé, Maïs, Mil — *Source : FEWS NET & WFP Niger Market Monitor 2023*).
+   - **Exécution dans la CI (et non comme porte bloquante mensuelle en production)** : un test automatique (`tests/unit/test_anomaly_reference_shocks.py`) génère le **rapport de rappel événement par événement** et vérifie le seuil documenté (**$\ge 80\%$ des épisodes de référence détectés** à $|z_{\text{robust}, t}| \ge 2{,}5$ et taux d'alertes hors crise $\le 10\%$).
 
 ---
 
@@ -140,5 +147,5 @@ Avec nos critères stricts (`frequency = 'MONTHLY'`, `is_observed = TRUE`, panie
 
 ### 4.2 Stratégie de Tests (`pytest`, couverture $\ge 70\%$)
 1. **Tests unitaires ETL (`tests/unit/test_etl.py`)** : Détection de fichier tronqué / WAF (`DQ-01`/`DQ-02`), `ref_unit_conversion` (conversion de `100 KG`/`500 G` vs non-conversion de `Pile`/`Head`), résolution de collision d'unité, calcul de `is_ml_eligible` sans imputation.
-2. **Tests unitaires ML & Anomalies (`tests/unit/test_ml.py`)** : Absence de fuite inter-marchés sur $T_{\text{cutoff}}$, gestion des `NaN`, calcul du vrai `MASE` et du `RelMAE_h`, sélection sur Fenêtres 1–2 vs rapport sur Fenêtre 3, validation du rappel $100\%$ sur les chocs 2008 et 2022 avec résidu log-tendance-saisonnalité ($\text{MAD} \times 1{,}4826$).
+2. **Tests unitaires ML & Anomalies (`tests/unit/test_ml.py` & `tests/unit/test_anomaly_reference_shocks.py`)** : Absence de fuite inter-marchés sur $T_{\text{cutoff}}$, gestion des `NaN`, calcul du vrai `MASE` et du `RelMAE_h`, sélection sur Fenêtres 1–2 vs rapport sur Fenêtre 3, rapport événement par événement et vérification du seuil ($\ge 80\%$) sur le catalogue élargi de 5 crises historiques (`2008`, `2012`, `2020`, `2022`, `2023–2024`).
 3. **Tests d'intégration (`tests/integration/test_api.py`)** : Vérification des FK composites SQL, isolation des permissions (`agriprix_api_readonly` vs `agriprix_etl_writer` vs `mlflow_user`), et tests des endpoints FastAPI.

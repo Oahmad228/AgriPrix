@@ -101,7 +101,9 @@ flowchart TB
 
 ---
 
-## 4. Processus 3 — Détection d'anomalies (Résidu log-tendance-saisonnalité sur $\ge 5\text{ ans}$, $\text{MAD} \times 1{,}4826$) et validation sur les chocs 2007-2008 et 2022
+## 4. Processus 3 — Détection mensuelle d'anomalies (Résidu log-tendance-saisonnalité sur $\ge 5\text{ ans}$, $\text{MAD} \times 1{,}4826$)
+
+> **Note d'architecture (Séparation Production vs CI)** : La validation historique du détecteur sur le catalogue élargi de chocs documentés fixés *a priori* (`2007–2008`, `2012 Crise sahélienne`, `2020 COVID-19`, `2022 Inflation/Ukraine`, `2023–2024 Sanctions Niger`) ne bloque **pas** le pipeline mensuel de production (car l'historique passé ne change pas chaque mois). Elle est exécutée automatiquement dans la **suite de tests d'intégration de la CI (`pytest`)** qui produit un rapport de rappel événement par événement et vérifie le seuil documenté ($\ge 80\%$ des crises détectées).
 
 ```mermaid
 flowchart TB
@@ -110,28 +112,24 @@ flowchart TB
         FetchMonthly["1. Charger les séries mensuelles observées :<br/>WHERE frequency = 'MONTHLY' AND is_observed = TRUE<br/>ayant >= 60 mois (5 ans) d'observations"]
         ComputeExpected["2. Définition unique de la valeur attendue sur log-prix L_t = ln(P_t) :<br/>- Tendance locale passée : T_tilde_t = median(L_{t-12} .. L_{t-1})<br/>- Effet saisonnier du mois m : S_tilde_m = median_y(L_{y,m} - T_tilde_{y,m})<br/>- Valeur attendue unique : P_expected_t = exp(T_tilde_t + S_tilde_m)"]
         ComputeZScore["3. Calculer le résidu r_t = ln(P_t) - ln(P_expected_t)<br/>et l'échelle normale robuste par mois m : sigma_MAD_m = 1.4826 * MAD(r_{., m})<br/>Score Z robuste : z_robust_t = r_t / max(sigma_MAD_m, 0.02)"]
-        ValidateShocks{"4. Passerelle Qualité (Validation Chocs) :<br/>100 % des 4 chocs de référence (2008 & 2022) détectés<br/>ET taux d'alertes CRITICAL hors crise <= 5 % ?"}
-        AlertCalibFail((("Fin Erreur : Échec Validation Détecteur")))
-        CheckThreshold{"5. Passerelle XOR (Par observation) :<br/>|z_robust_t| >= 2.5 ?"}
+        CheckThreshold{"4. Passerelle XOR (Par observation) :<br/>|z_robust_t| >= 2.5 ?"}
         NoAnomaly((("Fin : Prix normal (RAS)")))
-        ClassifySeverity{"6. Passerelle XOR :<br/>|z_robust_t| >= 3.5 ?"}
+        ClassifySeverity{"5. Passerelle XOR :<br/>|z_robust_t| >= 3.5 ?"}
         TagCritical["Qualifier : Sévérité = CRITICAL<br/>(Alerte Rouge - Choc majeur)"]
         TagWarning["Qualifier : Sévérité = WARNING<br/>(Alerte Orange - Tension modérée)"]
     end
 
     subgraph LaneDBAPI ["🗄️ Couloir 2 : Entrepôt PostgreSQL & API FastAPI"]
-        PersistAnomaly["7. Upsert dans fact_anomaly avec run_id<br/>UNIQUE (run_id, series_id, calendar_id)"]
-        ExposeEndpoint["8. Exposer sur GET /api/v1/anomalies<br/>(pour le run_id actif en production)"]
+        PersistAnomaly["6. Upsert dans fact_anomaly avec run_id<br/>UNIQUE (run_id, series_id, calendar_id)"]
+        ExposeEndpoint["7. Exposer sur GET /api/v1/anomalies<br/>(pour le run_id actif en production)"]
     end
 
-    subgraph LaneAnalyst ["👤 Couloir 3 : Analyste / Décideur / Client API"]
-        DisplayMap["9. Afficher le marqueur rouge/orange sur la carte des marchés<br/>et la courbe P_t vs P_expected_t"]
+    subgraph LaneAnalyst ["👤 Couloir 3 : Personas (Fatou, Youssef, Moussa) & Client API"]
+        DisplayMap["8. Afficher le marqueur rouge/orange sur la carte des marchés<br/>et la courbe P_t vs P_expected_t"]
         ExportReport((("Fin : Export CSV / JSON")))
     end
 
-    StartAnom --> FetchMonthly --> ComputeExpected --> ComputeZScore --> ValidateShocks
-    ValidateShocks -- "Non (Dérive du détecteur)" --> AlertCalibFail
-    ValidateShocks -- "Oui (Détecteur validé)" --> CheckThreshold
+    StartAnom --> FetchMonthly --> ComputeExpected --> ComputeZScore --> CheckThreshold
     CheckThreshold -- "Non (|z| < 2.5)" --> NoAnomaly
     CheckThreshold -- "Oui (|z| >= 2.5)" --> ClassifySeverity
     ClassifySeverity -- "Oui (|z| >= 3.5)" --> TagCritical
@@ -147,7 +145,7 @@ flowchart TB
 
 1. **Dans le Processus 1 (ETL)**, remarquez les **deux passerelles d'intégrité (`3. DQ-01` anti-WAF et `4. DQ-02` taille/MD5/lignes)** ainsi que l'application de `ref_unit_conversion` et de la règle de collision (étape 7).
 2. **Dans le Processus 2 (ML)**, l'étape 7 montre que le **choix du modèle champion se fait exclusivement sur les Fenêtres de validation 1 et 2**, tandis que l'étape 8 évalue une seule fois le modèle retenu sur la **Fenêtre 3 (*Hold-out Test*)**, évitant tout sur-apprentissage du choix de modèle sur le jeu de test final.
-3. **Dans le Processus 3 (Anomalies)**, l'étape 2 fixe **une seule définition mathématique de la valeur attendue** ($\hat{P}_{\text{expected}, t} = \exp(\tilde{T}_t + \tilde{S}_m)$ sur les séries ayant $\ge 60\text{ mois}$), l'étape 3 applique le facteur exact $1{,}4826 \times \text{MAD}$, et la passerelle 4 vérifie automatiquement que les chocs historiques de 2007–2008 et 2022 sont bien détectés avant de publier les alertes.
+3. **Dans le Processus 3 (Anomalies)**, l'étape 2 fixe **une seule définition mathématique de la valeur attendue** ($\hat{P}_{\text{expected}, t} = \exp(\tilde{T}_t + \tilde{S}_m)$ sur les séries ayant $\ge 60\text{ mois}$), l'étape 3 applique le facteur exact $1{,}4826 \times \text{MAD}$, et la validation de non-régression sur le catalogue élargi de chocs historiques fixés *a priori* (`2008`, `2012`, `2020`, `2022`, `2023–2024`) est déportée dans un test automatique de la CI (`pytest`) plutôt qu'une porte bloquante mensuelle.
 
 ---
 

@@ -1,7 +1,7 @@
 # ADR-001 : Architecture multi-conteneurs et sur-dimensionnement volontaire (Démonstration DevOps / MIAGE)
 
 - **Statut** : Accepté
-- **Date** : 2026-04-19
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
 - **Exigences liées** : `ENF-01`, `ENF-03`, `EF-18`, Contraintes non négociables n°1, n°2 et n°3
 

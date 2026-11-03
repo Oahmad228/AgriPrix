@@ -1,12 +1,14 @@
 """Phase 3 foundation smoke tests verifying configuration, API health, DB isolation, and CLIs."""
 
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-
 from src.api.main import app, check_database_readonly_connection
 from src.config import Settings, get_settings
 from src.dashboard.app import fetch_api_health
+from src.dashboard.app import main as dashboard_main
 from src.etl.cli import run_etl_status
 from src.ml.cli import run_ml_status
 
@@ -83,3 +85,30 @@ def test_dashboard_fetch_api_health_unreachable() -> None:
     res = fetch_api_health("http://127.0.0.1:59999")
     assert res["status"] == "unreachable"
     assert "error" in res
+
+
+def test_dashboard_fetch_api_health_and_main_render() -> None:
+    """Verify dashboard fetch_api_health on mocked HTTP 200 and main() rendering."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": "ok",
+        "database": {"connected": True, "name": "agriprix_dw"},
+    }
+    with patch("src.dashboard.app.httpx.get", return_value=mock_response):
+        res = fetch_api_health("http://api:8000")
+        assert res["status"] == "ok"
+
+        col_mock = MagicMock()
+        with (
+            patch("src.dashboard.app.st.set_page_config") as mock_cfg,
+            patch("src.dashboard.app.st.title") as mock_title,
+            patch("src.dashboard.app.st.subheader"),
+            patch("src.dashboard.app.st.columns", return_value=(col_mock, col_mock, col_mock)),
+            patch("src.dashboard.app.st.info") as mock_info,
+        ):
+            dashboard_main()
+            mock_cfg.assert_called_once()
+            mock_title.assert_called_once()
+            mock_info.assert_called_once()
+            assert col_mock.metric.call_count == 3

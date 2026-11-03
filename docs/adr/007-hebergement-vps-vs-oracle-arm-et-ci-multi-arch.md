@@ -1,7 +1,7 @@
 # ADR-007 : Stratégie d'hébergement de la démo publique (VPS x86 low-cost vs VM ARM Oracle Cloud) et CI Multi-Architecture (`amd64` + `arm64`)
 
 - **Statut** : Accepté
-- **Date** : 2026-04-19
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
 - **Exigences liées** : `SMART-06`, `EF-18`, `ENF-07`, `ENF-08`, `US-02`, `US-16`, `US-17`
 

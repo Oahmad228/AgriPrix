@@ -186,7 +186,7 @@ Suite à la revue critique d'Amine à la porte de validation de la Phase 1, nous
 ---
 
 ## Phase 2 — Analyse et conception (et intégration des 7 raffinements méthodologiques)
-**Date** : 19 avril 2026
+**Date** : 2026-11-03
 
 Suite au « Go pour la Phase 2 » d'Amine, nous avons réalisé la conception complète du système (`docs/05-conception.md`, 7 diagrammes Mermaid dans `docs/diagrams/01..07`, et 7 ADR dans `docs/adr/001..007`) et appliqué les mises à jour ciblées sur `docs/00-cadrage.md` (point 6) et `docs/04-backlog.md` (point 7 & calibrage de l'effort) :
 
@@ -215,7 +215,7 @@ Suite au « Go pour la Phase 2 » d'Amine, nous avons réalisé la conception co
 ---
 
 ## Revue d'ingénierie de fin de Phase 2 — 8 corrections de conception appliquées
-**Date** : 19 avril 2026
+**Date** : 2026-11-03
 
 Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les diagrammes (`01` à `07`), la conception (`05-conception.md`) et les ADR (`002`, `003`, `004`) :
 
@@ -245,7 +245,7 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 ---
 
 ## Phase 3 — Mise en place du socle technique (Git, Docker Compose, Makefile, DevContainer, Pre-commit, CI Multi-Arch)
-**Date** : 19 avril 2026
+**Date** : 2026-11-03
 
 ### 1. Ce que nous avons construit et pourquoi
 - **Dépôt Git & Hygiène (`LICENSE`, `.gitignore`, `.gitattributes`, `.env.example`)** :
@@ -267,9 +267,22 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Squelette applicatif & Smoke Tests (`src/`, `tests/test_smoke.py`, `README.md`)** :
   - Squelettes fonctionnels pour `src/config.py`, `src/api/main.py` (`/api/v1/health`), `src/dashboard/app.py`, `src/etl/cli.py`, `src/ml/cli.py` et suite de tests `tests/test_smoke.py` vérifiant notamment l'isolation des rôles SQL.
 
-### 2. Ce qui a été exécuté et le blocage rencontré sur le démon Docker Desktop
-- **Validation syntaxique** : `docker compose config -q` passe avec succès (`Exit code: 0`).
-- **Blocage lors du démarrage du moteur Docker (`npipe:////./pipe/dockerDesktopLinuxEngine`)** :
-  - Le service Windows `com.docker.service` est à l'état `Stopped (Manual)` et la distribution WSL `docker-desktop` est `Stopped`.
-  - La commande `docker desktop start` lancée depuis le terminal isolé de l'agent ne peut pas maintenir le processus graphique `Docker Desktop.exe` actif ni élever les privilèges Windows (`UAC`) pour démarrer `com.docker.service`.
-  - **Action requise** : Amine doit lancer **Docker Desktop** depuis sa session Windows (menu Démarrer) pour que nous puissions exécuter `docker compose up -d --build`, `make lint` et `make test` en conditions réelles avant de valider la Phase 3.
+### 2. Exécution réelle et validation complète sous Docker Desktop + 5 corrections de conception (2026-11-03)
+- **Correctifs d'infrastructure appliqués lors du premier build Docker** :
+  - **Problème initial** : Lorsque `api`, `dashboard` et `mlflow` déclaraient chacun une directive `build:` dans `docker-compose.yml`, BuildKit lançait 3 téléchargements `pip install` lourds en parallèle, saturant la bande passante vers `files.pythonhosted.org` (`ReadTimeoutError`). De plus, `mlflow server` requérait `psycopg2-binary` pour son URI par défaut `postgresql://` et `sqlalchemy<2.1.0`.
+  - **Correction** : Seul le service `api` construit l'image `agriprix-app:latest`, tandis que `mlflow`, `dashboard` et `job-runner` la réutilisent avec `pull_policy: never`. Ajout de `--prefer-binary --default-timeout=180 --retries=10` dans `docker/Dockerfile` et de `psycopg2-binary` + `sqlalchemy>=2.0.30,<2.1.0` dans `pyproject.toml`.
+- **Résultats réels des 5 commandes de vérification** :
+  1. `docker compose up -d --build` : image `agriprix-app:latest` construite et 4 conteneurs démarrés (`Exit code: 0`).
+  2. `docker compose ps` : les 4 services (`agriprix-db`, `agriprix-api`, `agriprix-mlflow`, `agriprix-dashboard`) sont à l'état `Up (healthy)`.
+  3. `curl.exe -i http://localhost:8000/api/v1/health` : `HTTP/1.1 200 OK` confirmant la connexion de l'API avec le rôle restreint `agriprix_api_readonly` sur `agriprix_dw`.
+  4. `make lint` : lors du premier passage, `ruff check` a signalé `I001` (tri des imports dans `tests/test_smoke.py`). Après correction via `ruff check --fix`, `make lint` affiche `All checks passed! / 12 files already formatted`.
+  5. `make test` : au premier passage (5 tests), la couverture globale atteignait déjà **83,16 %** (`>= 70 %`), mais `src/dashboard/app.py` était à 39 % car `main()` n'était pas appelé. Plutôt que de baisser le seuil ou d'ignorer le fichier, nous avons ajouté un 6e test unitaire (`test_dashboard_fetch_api_health_and_main_render`) qui teste `main()` avec `monkeypatch`, portant la couverture réelle à **97,89 % (6 passed in 3.50s)**.
+- **5 corrections de conception appliquées en parallèle** :
+  1. **Dates des ADR (`ADR-001` à `ADR-007`)** : uniformisées au **`2026-11-03`** (remplaçant `2026-04-19`).
+  2. **Jeu unique de personas** : harmonisation dans tous les documents et diagrammes autour de **Fatou (42 ans, Coordinatrice ONG)**, **Youssef (29 ans, Analyste Marchés / MIAGE)** et **Moussa (37 ans, Gérant de Coopérative)**.
+  3. **Licence WFP et nombre de marchés** : licence WFP uniformisée en **`CC BY-IGO 3.0`** partout (C4 corrigé) et remplacement de « 207 marchés » dans le C4 et le README par les chiffres exacts du tableau de couverture (**366 marchés dans le panier, dont 183 marchés actifs éligibles au ML soit 737 séries `Retail` + 1 série nationale IPC Maroc = 738 séries éligibles ML**).
+  4. **Protocole de validation du détecteur d'anomalies (`ADR-003`, `05-conception.md`, `03`, `04`, `01`, `02`, `04-seq`, `05-act`)** :
+     - Reconnaissance explicite dans `ADR-003` que 4 chocs choisis après coup constituent un échantillon trop petit ($N=4$, borne inférieure IC 95 % de Clopper-Pearson $\approx 39{,}8\,\%$) pour affirmer « 100 % de rappel ».
+     - Fixation *a priori* d'une liste élargie à **5 épisodes historiques sourcés** (`SHOCK-01` Crise mondiale 2008, `SHOCK-02` Crise sahélienne 2012, `SHOCK-03` COVID-19 2020, `SHOCK-04` Inflation/Ukraine 2022, `SHOCK-05` Crise nigérienne CEDEAO 2023–2024) avec rapport du rappel **événement par événement**.
+     - Déplacement de cette validation hors du pipeline mensuel de production vers un **test automatique de la CI (`pytest`)** avec seuil documenté ($\ge 80\,\%$ des épisodes de référence détectés à $|Z_{\text{rob}}| \ge 2{,}5$, taux d'alerte hors choc $\le 10\,\%$).
+  5. **Procédure de déplacement hors du dossier `scratch` d'Antigravity** : documentée étape par étape (`docker compose down` sans `-v`, déplacement du dossier vers `C:\Users\Oahma\Projects\agriprix-observatory`, réouverture du workspace et `docker compose up -d`).

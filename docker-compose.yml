@@ -32,22 +32,22 @@ services:
   # 2. MLflow Tracking Server (Isolated in mlflow_db via mlflow_user)
   # ---------------------------------------------------------------------------
   mlflow:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
     image: agriprix-app:latest
+    pull_policy: never
     container_name: agriprix-mlflow
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
-      MLFLOW_BACKEND_URI: postgresql+psycopg://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
+      MLFLOW_BACKEND_URI: postgresql://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
     command: >
       mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri postgresql+psycopg://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
+      --backend-store-uri postgresql://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
       --default-artifact-root /mlflow/artifacts
     volumes:
       - mlflow_artifacts:/mlflow/artifacts
@@ -108,10 +108,8 @@ services:
   # 4. Streamlit Dashboard (Zero SQL driver/credentials — HTTP client of api)
   # ---------------------------------------------------------------------------
   dashboard:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
     image: agriprix-app:latest
+    pull_policy: never
     container_name: agriprix-dashboard
     restart: unless-stopped
     depends_on:
@@ -146,10 +144,8 @@ services:
   #    Invoked via `make etl`, `make train`, `make test`, `make lint`
   # ---------------------------------------------------------------------------
   job-runner:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
     image: agriprix-app:latest
+    pull_policy: never
     profiles: ["jobs"]
     depends_on:
       db:

@@ -1,7 +1,7 @@
 # ADR-004 : Quantification de l'incertitude par Prédiction Conforme sur erreurs relatives par groupe et persistance dans `fact_conformal_quantiles`
 
 - **Statut** : Accepté (Révisé en fin de Phase 2)
-- **Date** : 2026-04-19
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
 - **Exigences liées** : `SMART-02`, `EF-08`, `EF-11`, `US-08`, `US-10`
 

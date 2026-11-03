@@ -85,7 +85,7 @@ sequenceDiagram
         Trainer->>Trainer: Ré-entraîner le champion jusqu'à max_data_date et prédire t+1, t+3, t+6
     end
 
-    Trainer->>Trainer: Exécuter détection d'anomalies (résidu log-tendance-saisonnalité >= 60 mois, MAD * 1.4826)<br/>Valider 100 % de détection sur les chocs 2007-2008 et 2022
+    Trainer->>Trainer: Exécuter détection d'anomalies (résidu log-tendance-saisonnalité >= 60 mois, MAD * 1.4826)<br/>Qualifier WARNING (|z| >= 2.5) et CRITICAL (|z| >= 3.5) (Validation du catalogue de 5 crises en test CI pytest)
 
     Trainer->>DB: BEGIN TRANSACTION
     Trainer->>DB: INSERT INTO fact_conformal_quantiles (run_id, ...)
@@ -107,7 +107,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as 👤 Analyste / Décideur / Développeur Tiers<br/>(Navigateur Web ou Client HTTP)
+    actor User as 👤 Personas (Fatou, Youssef, Moussa) / Développeur Tiers<br/>(Navigateur Web ou Client HTTP)
     participant UI as 🖥️ Conteneur dashboard<br/>(Streamlit + Plotly)
     participant API as ⚡ Conteneur api<br/>(FastAPI + SlowAPI)
     participant DBRO as 🗄️ PostgreSQL 16 (agriprix_dw)<br/>(Rôle : agriprix_api_readonly)
@@ -165,4 +165,4 @@ sequenceDiagram
 
 ### Question 2 : *« Comment fonctionne la bascule atomique `is_production_active = TRUE` sur la table `training_run` entre le Scénario 2 et le Scénario 3 ? »*
 > **Réponse conseillée** :
-> « Au lieu d'écraser en place les prévisions existantes pendant que des utilisateurs consultent l'API, chaque exécution de `make train` insère ses nouvelles prévisions, anomalies, quantiles conformes et métriques avec un nouveau `run_id` (en gardant `is_production_active = FALSE` pendant les calculs). Une fois que les 19 groupes sont entraînés et que la validation des chocs d'anomalies (2008/2022) a réussi, une transaction atomique passe l'ancien run à `FALSE` et le nouveau `run_id` à `TRUE`. L'API FastAPI joint `training_run WHERE is_production_active = TRUE` : la bascule est instantanée et permet de revenir en arrière (*rollback*) en une seconde si besoin. »
+> « Au lieu d'écraser en place les prévisions existantes pendant que des utilisateurs consultent l'API, chaque exécution de `make train` insère ses nouvelles prévisions, anomalies, quantiles conformes et métriques avec un nouveau `run_id` (en gardant `is_production_active = FALSE` pendant les calculs). Une fois que les 19 groupes sont entraînés et que les anomalies sont calculées, une transaction atomique passe l'ancien run à `FALSE` et le nouveau `run_id` à `TRUE` (tandis que la non-régression du détecteur sur le catalogue de 5 crises historiques 2008–2023 est garantie en amont par les tests automatiques de la CI). L'API FastAPI joint `training_run WHERE is_production_active = TRUE` : la bascule est instantanée et permet de revenir en arrière (*rollback*) en une seconde si besoin. »

@@ -21,13 +21,13 @@ RUN groupadd --gid 1000 agriprix && \
     mkdir -p /mlflow/artifacts /app/data/raw /app/data/processed /app/data/reports && \
     chown -R agriprix:agriprix /app /mlflow
 
-# Copy dependency specification first to maximize Docker layer caching
+# Copy dependency specification and source code
 COPY --chown=agriprix:agriprix pyproject.toml README.md ./
 COPY --chown=agriprix:agriprix src ./src
 COPY --chown=agriprix:agriprix tests ./tests
 
-# Install application and dev/test tools inside the container
-RUN pip install --no-cache-dir -e ".[dev]"
+# Install application and dev/test tools inside the container (prefer binary wheels, resilient timeout)
+RUN pip install --no-cache-dir --prefer-binary --default-timeout=180 --retries=10 -e ".[dev]"
 
 USER agriprix
 

@@ -42,11 +42,10 @@ flowchart TD
     subgraph Phase4_ML_Anomalies ["PHASE D : Synchronisation SQL & Campagne Analytique Versionnée (training_run)"]
         ForkBar["=== Upsert PostgreSQL (333 924 obs + etl_run_audit) & Création training_run (run_id, git_sha) ==="]
         
-        subgraph BranchAnom ["Branche 1 : Détection & Validation d'Anomalies (Séries MONTHLY, is_observed=TRUE, >= 60 mois)"]
+        subgraph BranchAnom ["Branche 1 : Détection d'Anomalies (Séries MONTHLY, is_observed=TRUE, >= 60 mois)"]
             D1["Calculer sur log-prix L_t = ln(P_t) la valeur attendue unique :<br/>P_expected_t = exp(T_tilde_t + S_tilde_m)<br/>où T_tilde_t = median(L_{t-12}..L_{t-1}) et S_tilde_m = median saisonnière du mois m"]
             D2["Calculer résidu r_t = ln(P_t) - ln(P_expected_t)<br/>et Z-score robuste z_t = r_t / max(1.4826 * MAD_m, 0.02)"]
-            D3["Étape de validation automatique sur les chocs documentés 2007-2008 et 2022<br/>(Vérifier Rappel = 100 % sur les 4 chocs de référence et taux CRITICAL hors crise <= 5 %)"]
-            D4["Qualifier WARNING (|z| >= 2.5) et CRITICAL (|z| >= 3.5)<br/>Upsert dans fact_anomaly (UNIQUE run_id, series_id, calendar_id)"]
+            D3["Qualifier WARNING (|z| >= 2.5) et CRITICAL (|z| >= 3.5)<br/>Upsert dans fact_anomaly (UNIQUE run_id, series_id, calendar_id)<br/>(Note : validation de rappel sur les 5 crises historiques 2008..2023 en test CI pytest)"]
         end
 
         subgraph BranchML ["Branche 2 : Prévisions Multi-Horizons (738 séries dans 19 groupes, Trous laissés à NaN)"]
@@ -83,7 +82,7 @@ flowchart TD
     MarkIneligible --> ForkBar
     MarkEligible --> ForkBar
 
-    ForkBar --> D1 --> D2 --> D3 --> D4 --> EndNode
+    ForkBar --> D1 --> D2 --> D3 --> EndNode
     ForkBar --> E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> EndNode
 ```
 
@@ -93,7 +92,7 @@ flowchart TD
 
 1. **La `PHASE A`** est désormais strictement alignée avec le BPMN : elle distingue la **Passerelle 1 (`DQ-01` : statut HTTP 200 et absence de challenge WAF)** et la **Passerelle 2 (`DQ-02` : taille exacte en octets, hash MD5 et nombre de lignes)**.
 2. **Dans la `PHASE C`**, le filtre `C3` utilise `is_observed == TRUE`, ce qui retient à la fois les relevés `actual` d'Afrique de l'Ouest et l'indice officiel `official_faostat` du Maroc, tout en écartant les estimations `aggregate`.
-3. **Dans la `PHASE D`**, la **Branche 1** inclut l'étape explicite `D3` de validation sur les chocs 2007–2008 et 2022, et la **Branche 2** conserve les trous à `NaN` (`E1`), choisit le modèle champion sur les Fenêtres 1–2 (`E3`) et produit le rapport final sur la Fenêtre 3 (`E4`).
+3. **Dans la `PHASE D`**, la **Branche 1** calcule les anomalies en production tandis que la validation sur le catalogue de chocs historiques fixés *a priori* (`2008`, `2012`, `2020`, `2022`, `2023–2024`) est exécutée dans la suite de tests automatiques de la CI (`pytest`), et la **Branche 2** conserve les trous à `NaN` (`E1`), choisit le modèle champion sur les Fenêtres 1–2 (`E3`) et produit le rapport final sur la Fenêtre 3 (`E4`).
 
 ---
 
@@ -103,6 +102,6 @@ flowchart TD
 > **Réponse conseillée** :
 > « Parce que l'éligibilité actuelle de nos 738 séries exige un segment continu d'au moins 60 mois (5 ans) avant août/septembre 2026, c'est-à-dire démarrant au plus tard à l'été 2021. Or, pour tester un modèle sur l'année 2022 (Fenêtre 1, coupure fin décembre 2021), la série doit déjà disposer d'au moins 24 mois d'historique continu *avant* décembre 2021 (12 mois pour construire le décalage saisonnier `lag_12` + au moins 12 mois d'apprentissage, soit un démarrage avant fin 2019). Sur nos 738 séries éligibles, **671 séries** (réparties dans 18 groupes sur 19) démarrent avant fin 2019 et sont testables sur le choc de 2022 (et **605 séries** si l'on exige 36 mois avant fin 2021), tandis que les 67 séries démarrées entre début 2020 et mi-2021 (comme les 8 séries de Niébé au Sénégal ouvertes en juillet 2020) rejoignent le backtesting dès la Fenêtre 2 (`2024–2025`, **738 séries sur 738**) et la Fenêtre 3 (`2025–2026`, **738 séries sur 738**). »
 
-### Question 2 : *« Pourquoi l'étape `D3` de validation sur les chocs de 2007–2008 et 2022 est-elle placée directement dans le pipeline d'exécution d'anomalies plutôt que dans un notebook ponctuel ? »*
+### Question 2 : *« Pourquoi la validation du détecteur d'anomalies sur les chocs historiques (`2008`, `2012`, `2020`, `2022`, `2023–2024`) est-elle placée dans un test automatique de la CI (`pytest`) plutôt que comme porte bloquante dans le pipeline mensuel de production ? »*
 > **Réponse conseillée** :
-> « Intégrer la vérification des 4 chocs historiques de référence (août 2008 à Dakar et Maradi, août/décembre 2022 à Ouagadougou, Dakar et au Maroc) comme un test de non-régression automatique dans le pipeline garantit que si quelqu'un modifie plus tard la formule du résidu ou les seuils $Z$-score ($2{,}5$ / $3{,}5$), le pipeline échouera immédiatement si le détecteur cesse de capter une crise connue ou si son taux d'alertes hors crise dépasse 5 %. »
+> « Parce qu'en production mensuelle, les observations historiques de 2008, 2012 ou 2022 sont figées : elles ne changent que si un développeur modifie le code de l'algorithme ou les seuils du détecteur. Placer cette vérification dans la suite de tests automatiques de la CI (`make test` / GitHub Actions) permet de bloquer dès la *Pull Request* toute modification du code qui dégraderait le rappel événement par événement sur notre catalogue de chocs de référence ($\ge 80\%$ requis), sans alourdir ni risquer de bloquer artificiellement le job mensuel de production. »

@@ -1,7 +1,7 @@
 # ADR-002 : Entrepôt PostgreSQL en schéma en étoile multi-grains, clés étrangères composites et cloisonnement des bases (`agriprix_dw` vs `mlflow_db`)
 
 - **Statut** : Accepté (Révisé en fin de Phase 2)
-- **Date** : 2026-04-19
+- **Date** : 2026-11-03
 - **Décideurs** : Amine & Ingénieur Data/Logiciel Junior
 - **Exigences liées** : `EF-02`, `EF-05`, `EF-06`, `ENF-02`, `ENF-04`, `ENF-07`
 

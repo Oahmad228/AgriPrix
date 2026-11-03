@@ -12,11 +12,12 @@
 ```mermaid
 flowchart LR
     %% Acteurs externes (Gauche : Utilisateurs humains & Clients API ; Droite : Ordonnanceur & Systèmes externes)
-    ActorAnalyst["👤 Analyste Sécurité Alimentaire<br/>(Persona 1 : Kofi - ONG / PAM)"]
-    ActorDecider["🏛️ Décideur / Chargée d'Études<br/>(Persona 2 : Yasmine - Ministère)"]
+    ActorDecider["🏛️ Coordinatrice Sécurité Alimentaire & Achats ONG<br/>(Persona 1 : Fatou - PAM / ONG Humanitaire)"]
+    ActorAnalyst["👤 Analyste Marchés & SI Décisionnel<br/>(Persona 2 : Youssef - Ministère / Observatoire)"]
+    ActorCoop["🌾 Gérant d'Union de Coopératives Céréalières<br/>(Persona 3 : Moussa - Acteur de Terrain)"]
     ActorThirdParty["💻 Développeur / Système Tiers<br/>(Client API REST JSON)"]
     ActorCron["⏰ Planificateur Mensuel / DevOps<br/>(Cron / Makefile / GitHub Actions)"]
-    ExtSources["🌐 Sources Open Data<br/>(API CKAN HDX WFP & Bulk FAOSTAT)"]
+    ExtSources["🌐 Sources Open Data<br/>(API CKAN HDX WFP CC BY-IGO 3.0 & Bulk FAOSTAT CC BY 4.0)"]
 
     subgraph SystemBoundary ["Système : AgriPrix Observatory (MVP Docker Compose)"]
         direction TB
@@ -36,20 +37,24 @@ flowchart LR
         UC10(["UC-10 : Vérifier l'intégrité des fichiers téléchargés<br/>(DQ-01 Anti-WAF + DQ-02 Taille, hash MD5 et nb lignes)"])
         UC11(["UC-11 : Calculer et persister le statut is_ml_eligible<br/>dans dim_series_catalog (is_observed=TRUE, fraîcheur <= 3m, >= 60m)"])
         UC12(["UC-12 : Entraîner les 19 groupes de modèles (Rolling-Origin)<br/>et calibrer les quantiles conformes relatifs (training_run)"])
-        UC13(["UC-13 : Détecter les anomalies (>= 5 ans, MAD x 1.4826)<br/>et valider le rappel sur les chocs 2007-2008 et 2022"])
+        UC13(["UC-13 : Détecter les anomalies (>= 5 ans, MAD x 1.4826)<br/>(Validation a priori sur chocs 2008, 2012, 2020, 2022, 2023 en test CI)"])
     end
 
     %% Associations Acteurs -> Cas d'utilisation
+    ActorDecider --> UC01
+    ActorDecider --> UC04
+    ActorDecider --> UC06
+    ActorDecider --> UC08
+
     ActorAnalyst --> UC01
     ActorAnalyst --> UC04
     ActorAnalyst --> UC06
     ActorAnalyst --> UC07
     ActorAnalyst --> UC08
 
-    ActorDecider --> UC01
-    ActorDecider --> UC04
-    ActorDecider --> UC06
-    ActorDecider --> UC08
+    ActorCoop --> UC01
+    ActorCoop --> UC04
+    ActorCoop --> UC06
 
     ActorThirdParty --> UC01
     ActorThirdParty --> UC04
@@ -79,8 +84,8 @@ flowchart LR
 
 ## 2. Comment lire ce diagramme ?
 
-1. **Quatre acteurs** interagissent avec le système :
-   - **L'Analyste (`Kofi`)** et **la Décideuse (`Yasmine`)** utilisent l'interface visuelle Streamlit (qui consomme l'API).
+1. **Cinq acteurs** interagissent avec le système :
+   - **Les trois personas métiers (`Fatou` la Coordinatrice ONG, `Youssef` l'Analyste Marchés & SI Décisionnel, et `Moussa` le Gérant de Coopérative Céréalière)** utilisent l'interface visuelle Streamlit (qui consomme exclusivement l'API).
    - **Le Développeur / Système Tiers (`Client API REST JSON`)** interroge directement les endpoints `/api/v1/*` de FastAPI pour intégrer nos séries, prévisions ou alertes dans ses propres notebooks ou outils externes.
    - **Le Planificateur Mensuel / DevOps** exécute les jobs batch (`UC-09`, `UC-12`, `UC-13`).
 2. **Distinction claire entre le calcul batch (`UC-11`) et la lecture temps réel (`UC-04` / `UC-05`)** :
