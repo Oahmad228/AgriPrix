@@ -240,3 +240,36 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
    - **Séries testables par fenêtre** : **671 séries** ($\ge 24\text{m}$ pré-2022) ou **605 séries** ($\ge 36\text{m}$ pré-2022) sur la **Fenêtre 1 (Choc 2022, 18/19 groupes)** ; **738 / 738 séries (100 %, 19/19 groupes)** sur la **Fenêtre 2 (`2024–2025`)** et sur la **Fenêtre 3 (`2025–2026`)**.
 8. **Alignement Activité/BPMN, base/rôle MLflow séparés, flèche GHCR, rôle générique C4, acteur Développeur Tiers et `UC-04`/`UC-11` (`01`, `05`, `07`)** :
    - Alignement des 2 passerelles d'intégrité (`DQ-01`/`DQ-02`) entre `05-activite-pipeline.md` et `02-processus-bpmn.md` ; séparation de `agriprix_dw` et `mlflow_db` (`mlflow_user`) dans PostgreSQL ; correction du sens des flèches `GHA -> GHCR <- AgriPrix` et remplacement de « Amine » par `Administrateur Data / MLOps` dans `07-architecture-c4.md` ; ajout de l'acteur `Développeur / Système Tiers` et séparation entre le calcul batch de `is_ml_eligible` (`UC-11` inclus dans `UC-09`/`UC-12`) et sa simple lecture temps réel (`UC-04`/`UC-05`) dans `01-cas-utilisation.md`.
+
+
+---
+
+## Phase 3 — Mise en place du socle technique (Git, Docker Compose, Makefile, DevContainer, Pre-commit, CI Multi-Arch)
+**Date** : 19 avril 2026
+
+### 1. Ce que nous avons construit et pourquoi
+- **Dépôt Git & Hygiène (`LICENSE`, `.gitignore`, `.gitattributes`, `.env.example`)** :
+  - Initialisation du dépôt Git sur la branche `main` avec des commits atomiques au format *Conventional Commits* (`docs:`, `build:`, `feat(core):`).
+  - Ajout de `.gitattributes` forçant les fins de ligne `LF` (`eol=lf`) sur tous les scripts `.sql`, `.py`, `.yml` et `Makefile` pour éviter les bugs `CRLF` entre Windows et les conteneurs Linux sous WSL2.
+  - Aucun secret versionné : seul `.env.example` est suivi par Git, et `docker-compose.yml` inclut des valeurs de repli locales (`${VAR:-default}`) pour que `docker compose up` fonctionne immédiatement après un `git clone`.
+- **Cloisonnement PostgreSQL 16 (`docker/postgres/01-init.sql`)** :
+  - Script SQL d'initialisation automatique créant **2 bases isolées** (`agriprix_dw` et `mlflow_db`) et **3 rôles à privilèges minimaux** :
+    - `agriprix_etl_writer` : droits `SELECT, INSERT, UPDATE, DELETE` sur `agriprix_dw` (utilisé uniquement par `job-runner`).
+    - `agriprix_api_readonly` : droit `SELECT` exclusivement sur `agriprix_dw` (utilisé par `api` FastAPI), avec interdiction de se connecter à `mlflow_db`.
+    - `mlflow_user` : propriétaire exclusif de `mlflow_db` (utilisé par `mlflow`), avec interdiction de se connecter à `agriprix_dw`.
+- **Conteneurisation légère & Budget RAM (`docker/Dockerfile`, `docker-compose.yml`)** :
+  - Image unique `python:3.11-slim` exécutée sous utilisateur non-root `agriprix (UID 1000)` avec `libgomp1` (requis par LightGBM).
+  - Limites strictes dans `docker-compose.yml` : `db` (`512m`), `mlflow` (`512m`), `api` (`512m`), `dashboard` (`512m`), et `job-runner` éphémère sous profil `jobs` (`1280m`), maintenant l'ensemble à **2,0 Go au repos et 3,25 Go en pic** (< 4 Go).
+  - Volumes nommés `agriprix_pgdata` et `agriprix_mlflow_artifacts` pour la performance native Linux ext4 sous WSL2.
+- **Outillage Développeur & CI/CD (`Makefile`, `.devcontainer/devcontainer.json`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`)** :
+  - `Makefile` exposant `make up`, `down`, `ps`, `logs`, `lint`, `format`, `test`, `etl`, `train`, `clean` (100 % exécutés dans Docker).
+  - Workflow GitHub Actions exécutant `ruff check`, `ruff format --check`, `pytest --cov=src --cov-fail-under=70`, le test de démarrage `docker compose up -d` + `/api/v1/health`, et la vérification du build multi-architecture (`linux/amd64,linux/arm64`) via QEMU et Docker Buildx.
+- **Squelette applicatif & Smoke Tests (`src/`, `tests/test_smoke.py`, `README.md`)** :
+  - Squelettes fonctionnels pour `src/config.py`, `src/api/main.py` (`/api/v1/health`), `src/dashboard/app.py`, `src/etl/cli.py`, `src/ml/cli.py` et suite de tests `tests/test_smoke.py` vérifiant notamment l'isolation des rôles SQL.
+
+### 2. Ce qui a été exécuté et le blocage rencontré sur le démon Docker Desktop
+- **Validation syntaxique** : `docker compose config -q` passe avec succès (`Exit code: 0`).
+- **Blocage lors du démarrage du moteur Docker (`npipe:////./pipe/dockerDesktopLinuxEngine`)** :
+  - Le service Windows `com.docker.service` est à l'état `Stopped (Manual)` et la distribution WSL `docker-desktop` est `Stopped`.
+  - La commande `docker desktop start` lancée depuis le terminal isolé de l'agent ne peut pas maintenir le processus graphique `Docker Desktop.exe` actif ni élever les privilèges Windows (`UAC`) pour démarrer `com.docker.service`.
+  - **Action requise** : Amine doit lancer **Docker Desktop** depuis sa session Windows (menu Démarrer) pour que nous puissions exécuter `docker compose up -d --build`, `make lint` et `make test` en conditions réelles avant de valider la Phase 3.
