@@ -1,0 +1,85 @@
+"""Phase 3 foundation smoke tests verifying configuration, API health, DB isolation, and CLIs."""
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
+
+from src.api.main import app, check_database_readonly_connection
+from src.config import Settings, get_settings
+from src.dashboard.app import fetch_api_health
+from src.etl.cli import run_etl_status
+from src.ml.cli import run_ml_status
+
+
+def test_settings_urls_and_cors() -> None:
+    """Verify database connection URLs and CORS parsing from Settings."""
+    cfg = Settings(
+        postgres_host="db",
+        postgres_port=5432,
+        dw_db="agriprix_dw",
+        dw_writer_user="writer_u",
+        dw_writer_password="pw1",
+        dw_readonly_user="ro_u",
+        dw_readonly_password="pw2",
+        cors_origins="http://localhost:8501, http://dashboard:8501",
+    )
+    assert "writer_u:pw1@db:5432/agriprix_dw" in cfg.writer_database_url
+    assert "ro_u:pw2@db:5432/agriprix_dw" in cfg.readonly_database_url
+    assert cfg.cors_origin_list == ["http://localhost:8501", "http://dashboard:8501"]
+    assert get_settings().dw_db == "agriprix_dw"
+
+
+def test_api_health_endpoint() -> None:
+    """Verify /api/v1/health responds with HTTP 200 and expected schema."""
+    client = TestClient(app)
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["service"] == "agriprix-api"
+    assert "database" in payload
+    assert "feature_flags" in payload
+
+
+def test_database_roles_and_isolation() -> None:
+    """Verify agriprix_dw connection and that agriprix_api_readonly cannot connect to mlflow_db."""
+    ok, detail = check_database_readonly_connection()
+    assert isinstance(ok, bool)
+    assert isinstance(detail, str)
+
+    # When running inside Docker Compose with db service up, verify strict role isolation
+    if ok:
+        cfg = get_settings()
+        assert "agriprix_api_readonly" in detail
+        # Verify agriprix_api_readonly is denied access to mlflow_db
+        forbidden_url = (
+            f"postgresql+psycopg://{cfg.dw_readonly_user}:{cfg.dw_readonly_password}"
+            f"@{cfg.postgres_host}:{cfg.postgres_port}/mlflow_db"
+        )
+        engine = create_engine(forbidden_url)
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            raise AssertionError("agriprix_api_readonly should not be able to connect to mlflow_db")
+        except SQLAlchemyError:
+            pass
+        finally:
+            engine.dispose()
+
+
+def test_etl_and_ml_cli_entrypoints() -> None:
+    """Verify ETL and ML CLI status functions return valid metadata."""
+    etl_res = run_etl_status()
+    assert etl_res["pipeline"] == "etl"
+    assert etl_res["status"] == "ready"
+
+    ml_res = run_ml_status()
+    assert ml_res["pipeline"] == "ml_training"
+    assert ml_res["status"] == "ready"
+
+
+def test_dashboard_fetch_api_health_unreachable() -> None:
+    """Verify dashboard gracefully handles an unreachable API URL."""
+    res = fetch_api_health("http://127.0.0.1:59999")
+    assert res["status"] == "unreachable"
+    assert "error" in res
