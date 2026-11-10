@@ -4,7 +4,7 @@
 # exclusively inside Docker containers (Zero host dependency).
 # =============================================================================
 
-.PHONY: help build up down ps logs lint format test etl train clean
+.PHONY: help build up down ps logs lint format test etl etl-offline reconcile train clean
 
 COMPOSE := docker compose
 RUN_JOB := $(COMPOSE) --profile jobs run --rm job-runner
@@ -20,6 +20,8 @@ help: ## Show available Makefile targets
 	@echo "  make format  : Auto-format code with Ruff inside Docker"
 	@echo "  make test    : Run pytest suite with coverage (>= 70%) inside Docker"
 	@echo "  make etl     : Run the ETL ingestion and validation pipeline inside Docker"
+	@echo "  make etl-offline : Reload the warehouse from files already in data/raw (no download)"
+	@echo "  make reconcile   : Recompute eligible series on the 2026-11-03 audit snapshot"
 	@echo "  make train   : Run the ML global training and anomaly detection pipeline inside Docker"
 	@echo "  make clean   : Stop containers and remove volumes (resets database)"
 
@@ -49,6 +51,12 @@ test: ## Run automated test suite with coverage check (>= 70%) inside job-runner
 
 etl: ## Execute the ETL pipeline (HDX/FAOSTAT ingestion, validation, warehouse upsert)
 	$(RUN_JOB) python -m src.etl.cli
+
+etl-offline: ## Reload the warehouse from local raw files (MD5 still recorded)
+	$(RUN_JOB) python -m src.etl.cli --offline
+
+reconcile: ## Reproduce the Phase 0-2 audit count (738) on the frozen snapshot
+	$(RUN_JOB) python -m src.etl.reconcile data/raw/snapshot_20261103
 
 train: ## Execute the ML forecasting and anomaly detection pipeline
 	$(RUN_JOB) python -m src.ml.cli
