@@ -333,3 +333,50 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Un fichier de lock qui n'est pas lu par le build ne verrouille rien.** Il faut toujours le prouver par un `diff` entre le lock et `pip freeze` dans l'image.
 - **Un test qui ne peut pas échouer ne teste rien.** Pour chaque garde-fou, provoquer la panne pour de vrai (arrêter la base) et vérifier que le test casse.
 - **Une couverture de 100 % sur un squelette n'a aucune valeur de preuve** : ce chiffre ne doit pas apparaître dans un CV.
+
+---
+
+## Sprint 1 — ETL hybride, contrôle d'intégrité et entrepôt en étoile
+**Date** : 2026-11-10 — **Branche** : `sprint/1-etl` — **Contributeurs** : Ahmad & Claude Code
+
+### 1. Ce que nous avons construit
+- **Extraction vérifiée** (`src/etl/sources.py`) :
+  - les 5 CSV WFP via l'API CKAN de HDX et les 2 archives FAOSTAT ;
+  - **DQ-01** : réponse vide ou `HTTP 202` du pare-feu AWS, retentée avec un délai exponentiel ;
+  - **DQ-02** : taille et MD5 comparés à ceux publiés par le fournisseur (champ `hash` de CKAN, ETag S3 pour FAOSTAT, qui est un MD5). Vérifié manuellement : le MD5 calculé du CSV Sénégal est égal au `hash` CKAN ;
+  - pas de nouveau téléchargement si la copie locale a le bon MD5.
+- **Parsing et quarantaine** (`src/etl/parsers.py`) :
+  - **DQ-03** : colonnes obligatoires ;
+  - **DQ-04** : chaque ligne invalide (prix ≤ 0, date, GPS, unité ou drapeau inconnu) va dans `audit_rejected_rows` avec son motif et la ligne brute en JSON ;
+  - FAOSTAT : lecture du CSV « flaggé » pour récupérer les drapeaux qualité.
+- **Normalisation** (`src/etl/transform.py`) :
+  - unités métriques converties (100 KG → KG ×0,01 ; 500 G → KG ×2) ;
+  - unités locales (Pile, Head…) jamais converties ;
+  - clé de série à 8 composantes ;
+  - collisions et doublons tranchés de façon déterministe (**DQ-05**).
+- **Éligibilité ML** (`src/etl/eligibility.py`) : 5 règles, aucune interpolation, motif d'inéligibilité explicite pour chaque série.
+- **Entrepôt** : migration SQL versionnée `V001` (schéma en étoile, FK composites, contraintes `CHECK`), mini-outil de migration avec somme de contrôle, chargement `COPY` + fusion incrémentale, contrôles après chargement **DQ-04/05/06/07**, tables d'audit `etl_run_audit` et `etl_source_file`.
+
+### 2. Résultats réels (exécution `etl_run_id = 5`, 2026-11-10)
+- **343 079 observations** (336 939 mensuelles, 6 140 annuelles), **0 ligne rejetée**, 6 623 séries, 367 marchés, 227 produits.
+- **782 séries éligibles** dans 19 groupes et 183 marchés (BFA 278, MLI 264, NER 196, SEN 43, MAR 1, CIV 0).
+- **Réconciliation** : sur les fichiers de l'audit du 3 novembre, le code retrouve **exactement 738 séries**, pays par pays. L'écart 738 → 782 vient uniquement des nouvelles données HDX.
+- **Chiffres du pitch vérifiés en SQL** :
+  - mil au détail à Sankaryaré (Ouagadougou) : 249 → 468 XOF/kg entre août 2021 et août 2022 (+88,0 %) ;
+  - riz importé à Tilène (Dakar) : 215 → 437,5 XOF/kg entre août 2007 et août 2008 (+103,5 %).
+- **Tests** : 62 tests (unitaires + intégration dans un schéma PostgreSQL jetable), couverture 95 %.
+
+### 3. Décisions prises avec Ahmad (ADR-009)
+1. **Drapeaux FAOSTAT** : les valeurs `E` (estimées) et `I` (imputées) sont stockées mais exclues du ML. L'IPC alimentaire du Maroc garde 234 mois observés (2007–2026) au lieu de 318.
+2. **Versions des données** : chaque exécution télécharge la dernière version et trace le MD5 de chaque fichier. Une copie figée de l'audit sert de test de réconciliation.
+
+### 4. Ce qui a échoué (et comment nous l'avons résolu)
+1. **Tests bloqués 6 minutes** : mes tests ouvraient des connexions sans les fermer. Ces transactions restaient `idle in transaction` et bloquaient le `DROP SCHEMA` de nettoyage. Diagnostiqué via `pg_stat_activity`, corrigé avec des connexions toujours fermées (`with`) et un `lock_timeout` de sécurité.
+2. **Chargement des faits en 124 s** : le profilage par étape, puis un chronométrage SQL, ont montré que l'`INSERT` de 343 000 lignes coûtait 94 s côté PostgreSQL (4 vérifications de clés étrangères par ligne, base limitée à 0,75 CPU). Passage à un **chargement incrémental** (COPY vers une table temporaire, puis insertion, mise à jour et suppression ensemblistes) : **6,4 s** quand rien n'a changé. Le tout premier chargement reste lent (~2 min, une seule fois).
+3. **Durées d'exécution fausses** : `now()` renvoie l'heure de début de la transaction en PostgreSQL. Remplacé par `clock_timestamp()`.
+4. **Fuite de jetons dans les logs** : `httpx` journalisait les URL S3 pré-signées de HDX (jetons AWS temporaires). Son niveau de log est relevé à `WARNING`.
+
+### 5. Ce que nous avons appris
+- **Réconcilier avant de publier** : un écart (738 contre 782) n'est ni une erreur ni une amélioration tant qu'on ne l'a pas expliqué. Rejouer le code sur les données d'origine permet de séparer « effet du code » et « effet des données ».
+- **Mesurer avant d'optimiser** : l'intuition (« Python est lent ») était fausse. Le coût venait des clés étrangères vérifiées ligne à ligne en base.
+- **Les métadonnées qualité des sources sont des données** : les drapeaux FAOSTAT étaient absents du fichier utilisé lors de l'audit. Il faut toujours lire la version la plus riche d'une source.

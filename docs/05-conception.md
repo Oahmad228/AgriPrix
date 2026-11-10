@@ -67,6 +67,9 @@ Conformément à la contrainte n°6, tous les diagrammes sont écrits en code **
 
 ### 2.2 Chiffres exacts vérifiés : 738 séries éligibles, 19 groupes, 58 runs MLflow et séries testables par fenêtre
 
+> **Mise à jour Sprint 1 (2026-11-10)** : les 738 séries de ce tableau sont **reproduites à l'unité** par l'ETL sur les fichiers de l'audit (`make reconcile`). Sur les fichiers HDX mis à jour au 2026-11-10, le même code trouve **782 séries** (BFA 278, MLI 264, NER 196, SEN 43, MAR 1). La série IPC Maroc `23013` compte 234 mois observés (2007–2026) : les valeurs imputées de 2000–2006 sont exclues ([`ADR-009`](adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md)).
+
+
 Avec nos critères stricts (`frequency = 'MONTHLY'`, `is_observed = TRUE`, panier sécurité alimentaire en `Retail` ou IPC `23013` Maroc, fraîcheur relative $\text{last\_obs} \ge \max(\text{date\_pays}) - 3\text{ mois}$, segment continu $\ge 60\text{ mois}$ avec au plus 3 mois manquants consécutifs **laissés à `NaN`**) :
 
 | Pays | Groupes actifs `(country_iso3, commodity_group)` | Total Séries Éligibles | Testables sur **Fenêtre 1 (`VAL_W1_2022` : $T=\text{2021-12-15}$)** ($\ge 24\text{m}$ / $\ge 36\text{m}$ pré-2022) | Testables sur **Fenêtre 2 (`VAL_W2_24_25` : $T=\text{2024-06-15}$)** | Testables sur **Fenêtre 3 (`TEST_W3_25_26` : $T=\text{2025-08-15}$)** |

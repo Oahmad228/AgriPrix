@@ -94,6 +94,9 @@ Dans notre version initiale, nous avions proposé un seuil naïf de « $\ge 36$ 
    - Sur les 1 718 séries du panier ayant $\ge 36$ observations n'importe quand depuis 1990, près de **970 séries sont soit arrêtées depuis plusieurs années** (parfois dès 2014), soit coupées par des interruptions de collecte de 1 à 5 ans !
 
 ### 5.3 Règle stricte d'éligibilité au Machine Learning (`is_ml_eligible = TRUE`)
+
+> **Mise à jour Sprint 1 (2026-11-10)** : la règle d'éligibilité de la section 5.3 (seuil fixe « ≥ janvier 2024 » et interpolation des trous) a été **remplacée** en Phase 2 par la règle de fraîcheur relative, **sans aucune interpolation** ([`05-conception.md`](05-conception.md) §2.2), qui est celle implémentée dans `src/etl/eligibility.py`. Le comptage de 746 séries ci-dessous correspond à l'ancienne règle.
+
 Une série est marquée `is_ml_eligible = TRUE` si et seulement si elle vérifie simultanément les **5 critères stricts** suivants :
 1. `frequency == 'MONTHLY'` (exclut les séries annuelles FAOSTAT du Maroc) ;
 2. `priceflag == 'actual'` uniquement (exclut toute ligne `aggregate`, estimée ou imputée) ;

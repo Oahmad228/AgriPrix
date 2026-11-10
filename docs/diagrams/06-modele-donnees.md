@@ -7,6 +7,11 @@
 
 ---
 
+> **Mise à jour Sprint 1 (2026-11-10)** : implémenté dans [`src/etl/sql/V001__warehouse_schema.sql`](../../src/etl/sql/V001__warehouse_schema.sql). Deux écarts assumés :
+> 1. `official_faostat` est remplacé par les drapeaux qualité réels de FAOSTAT (`fao_official`, `fao_external`, `fao_break` = observés ; `fao_estimated`, `fao_imputed` = non observés), voir [`ADR-009`](../adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md).
+> 2. Ajout de la table `etl_source_file` (MD5, taille et date de chaque fichier source par exécution), et de `etl_run_id` sur `fact_price_observation`.
+> Les tables ML (`training_run`, `fact_forecast`, …) et `dim_exchange_rate` seront créées par des migrations ultérieures (Sprints 2, 3 et 5).
+
 ## 1. Du MCD au MLD : Justification des choix de modélisation
 
 En combinant la rigueur de **Merise** (intégrité référentielle stricte) et la modélisation décisionnelle de **Kimball (*Star Schema*)**, notre schéma résout 6 défis d'ingénierie des données :
