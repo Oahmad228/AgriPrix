@@ -8,7 +8,7 @@
 **Plateforme data de bout en bout pour le suivi, la détection d'anomalies et la prévision (1, 3 et 6 mois, avec intervalles d'incertitude) des prix alimentaires en Afrique de l'Ouest (UEMOA) et au Maroc.**
 
 > **État du projet (novembre 2026)** : socle technique et entrepôt de données opérationnels (ETL vérifié, 343 079 observations).
-> Les modèles, la détection d'anomalies et le dashboard sont **en cours de construction**
+> Les prévisions sont calculées et évaluées ; la détection d'anomalies, l'API métier et le dashboard sont **en cours de construction**
 > (voir la feuille de route ci-dessous). Ce README ne présente comme acquis que ce qui a été exécuté.
 
 ---
@@ -34,8 +34,21 @@ Mesuré le **2026-11-10** par l'exécution ETL `etl_run_id = 5`, sur les fichier
 
 Règles d'éligibilité : série mensuelle du panier (riz, mil, sorgho, maïs, niébé au détail ; IPC alimentaire du Maroc), observée dans les 3 derniers mois disponibles du pays, avec au moins **60 mois observés** dans son segment récent, sans trou de plus de 3 mois. **Aucune valeur n'est interpolée.** Les valeurs agrégées (WFP) et estimées ou imputées (FAOSTAT) sont stockées mais exclues du ML ([`ADR-009`](docs/adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md)). La Côte d'Ivoire (relevés `aggregate` de 2020 à 2026) reste en consultation seule.
 
+### Prévisions (Sprint 2 — chiffres mesurés)
+
+Campagne active `training_run.run_id = 3` (données `etl_run_id = 5`). Les chiffres viennent du rapport généré [`docs/results/forecast-report.md`](docs/results/forecast-report.md), et le suivi des runs est dans MLflow.
+
+**Test final hors échantillon (W3 : cibles 2025-09 → 2026-08), 781–782 séries :**
+
+| Horizon | MAPE | Gain vs prix du même mois l'an passé | Gain vs persistance (dernier prix connu) | Couverture de l'intervalle à 80 % |
+| :--- | ---: | ---: | ---: | ---: |
+| 1 mois | 5,7 % | +80,2 % | **−4,7 %** | 81,0 % |
+| 3 mois | 12,6 % | +56,7 % | **−10,1 %** | 75,8 % |
+| 6 mois | 22,7 % | +24,5 % | **−18,5 %** | 51,8 % |
+
+**Lecture honnête.** Sur les fenêtres de sélection (2022 et 2024-25), LightGBM bat la persistance de 4 à 16 %. En revanche, sur la période de test, marquée par une **chute des prix de 17 à 27 % sur un an** au Burkina, au Mali et au Niger après une hausse, aucun modèle appris ne fait mieux que la persistance, et l'intervalle à 6 mois couvre trop peu de cas. Ce résultat est publié tel quel ; analyse et pistes dans [`ADR-010`](docs/adr/010-protocole-de-prevision-baseline-persistance-et-selection.md) et l'analyse exploratoire [`docs/eda/EDA.md`](docs/eda/EDA.md).
+
 ### Ce qui sera construit (cibles, non encore mesurées)
-- Prévisions à 1, 3 et 6 mois évaluées en *rolling-origin* (tests successifs dans le temps sans voir le futur), avec intervalles conformes à 80 %.
 - Détection d'anomalies robuste, évaluée sur un catalogue fixé à l'avance de 5 crises documentées (2008, 2012, 2020, 2022, 2023–2024), résultats rapportés tels quels.
 - API REST en lecture seule, dashboard, mise à jour mensuelle et démo publique en HTTPS.
 
@@ -81,7 +94,9 @@ docker compose up -d --build --wait
 | ETL (télécharge + vérifie + charge) | `make etl` | `docker compose --profile jobs run --rm job-runner python -m src.etl.cli` |
 | ETL sans téléchargement | `make etl-offline` | `docker compose --profile jobs run --rm job-runner python -m src.etl.cli --offline` |
 | Réconciliation avec l'audit | `make reconcile` | `docker compose --profile jobs run --rm job-runner python -m src.etl.reconcile data/raw/snapshot_20261103` |
-| Entraînement *(Sprint 2)* | `make train` | `docker compose --profile jobs run --rm job-runner python -m src.ml.cli` |
+| Entraînement + prévisions | `make train` | `docker compose --profile jobs run --rm job-runner python -m src.ml.cli` |
+| Rapport d'analyse exploratoire | `make eda` | `docker compose --profile jobs run --rm job-runner python -m src.eda.report` |
+| Rapport de résultats ML | `make report` | `docker compose --profile jobs run --rm job-runner python -m src.ml.report` |
 | Arrêter (garde les données) | `make down` | `docker compose --profile jobs down` |
 | Tout réinitialiser (efface les volumes) | `make clean` | `docker compose --profile jobs down -v` |
 
@@ -93,8 +108,8 @@ docker compose up -d --build --wait
 | :--- | :--- | :--- |
 | Phases 0–3 | Cadrage, cahier des charges, conception, socle Docker/CI | ✅ terminé |
 | Sprint 0.5 | Remise à niveau du socle (lock des dépendances, CI, santé API) | ✅ terminé |
-| Sprint 1 | ETL HDX/FAOSTAT + contrôle d'intégrité + entrepôt en étoile | 🔄 en validation |
-| Sprint 2 | Prévisions 1/3/6 mois + intervalles conformes + MLflow | ⏳ à venir |
+| Sprint 1 | ETL HDX/FAOSTAT + contrôle d'intégrité + entrepôt en étoile | ✅ terminé |
+| Sprint 2 | Prévisions 1/3/6 mois + intervalles conformes + MLflow | 🔄 en validation |
 | Sprint 3 | Détection d'anomalies validée + API sécurisée | ⏳ à venir |
 | Sprint 4 | Dashboard + mise à jour mensuelle + démo publique HTTPS (fin du MVP) | ⏳ à venir |
 | Sprint 5 | Bonus : Prometheus/Grafana, Kubernetes, Metabase, devises | ⏳ optionnel |
@@ -106,7 +121,7 @@ docker compose up -d --build --wait
 - **Cadrage et sources** : [`00-cadrage`](docs/00-cadrage.md) · [`01-etude-existant`](docs/01-etude-existant.md) · [`02-sources-donnees`](docs/02-sources-donnees.md)
 - **Spécifications** : [`03-cahier-des-charges`](docs/03-cahier-des-charges.md) · [`04-backlog`](docs/04-backlog.md)
 - **Conception** : [`05-conception`](docs/05-conception.md) · diagrammes [`01`](docs/diagrams/01-cas-utilisation.md) [`02`](docs/diagrams/02-processus-bpmn.md) [`03`](docs/diagrams/03-diagramme-classes.md) [`04`](docs/diagrams/04-diagrammes-sequence.md) [`05`](docs/diagrams/05-activite-pipeline.md) [`06`](docs/diagrams/06-modele-donnees.md) [`07`](docs/diagrams/07-architecture-c4.md)
-- **Décisions d'architecture (ADR)** : [`001`](docs/adr/001-surdimensionnement-architecture-devops.md) · [`002`](docs/adr/002-entrepot-postgresql-etoile-multi-grains.md) · [`003`](docs/adr/003-strategie-ml-globale-fenetre-historique-rolling-origin.md) · [`004`](docs/adr/004-intervalles-conformes-erreurs-relatives-par-groupe.md) · [`005`](docs/adr/005-dashboard-streamlit-et-bi-metabase-optionnel.md) · [`006`](docs/adr/006-devises-locales-et-feature-flag-conversion.md) · [`007`](docs/adr/007-hebergement-vps-vs-oracle-arm-et-ci-multi-arch.md) · [`008`](docs/adr/008-image-unique-et-verrouillage-des-dependances.md) · [`009`](docs/adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md)
+- **Décisions d'architecture (ADR)** : [`001`](docs/adr/001-surdimensionnement-architecture-devops.md) · [`002`](docs/adr/002-entrepot-postgresql-etoile-multi-grains.md) · [`003`](docs/adr/003-strategie-ml-globale-fenetre-historique-rolling-origin.md) · [`004`](docs/adr/004-intervalles-conformes-erreurs-relatives-par-groupe.md) · [`005`](docs/adr/005-dashboard-streamlit-et-bi-metabase-optionnel.md) · [`006`](docs/adr/006-devises-locales-et-feature-flag-conversion.md) · [`007`](docs/adr/007-hebergement-vps-vs-oracle-arm-et-ci-multi-arch.md) · [`008`](docs/adr/008-image-unique-et-verrouillage-des-dependances.md) · [`009`](docs/adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md) · [`010`](docs/adr/010-protocole-de-prevision-baseline-persistance-et-selection.md)
 - **Journal de bord** : [`docs/JOURNAL.md`](docs/JOURNAL.md)
 
 ---

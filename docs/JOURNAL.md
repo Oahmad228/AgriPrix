@@ -380,3 +380,42 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Réconcilier avant de publier** : un écart (738 contre 782) n'est ni une erreur ni une amélioration tant qu'on ne l'a pas expliqué. Rejouer le code sur les données d'origine permet de séparer « effet du code » et « effet des données ».
 - **Mesurer avant d'optimiser** : l'intuition (« Python est lent ») était fausse. Le coût venait des clés étrangères vérifiées ligne à ligne en base.
 - **Les métadonnées qualité des sources sont des données** : les drapeaux FAOSTAT étaient absents du fichier utilisé lors de l'audit. Il faut toujours lire la version la plus riche d'une source.
+
+---
+
+## Sprint 2 — Prévisions 1/3/6 mois, intervalles conformes et MLflow
+**Date** : 2026-11-10 — **Branche** : `sprint/2-forecast` — **Contributeurs** : Ahmad & Claude Code
+
+### 1. Ce que nous avons construit
+- **Migration `V002`** : tables `training_run` (un seul run actif garanti par un index unique partiel), `fact_model_metrics_by_series`, `fact_conformal_quantiles`, `fact_champion_model`, `fact_forecast`.
+- **`src/ml`** :
+  - variables explicatives causales sur les log-prix (`features.py`) ;
+  - 4 familles de modèles (`models.py`) ;
+  - fenêtres rolling-origin (`windows.py`) ;
+  - métriques, quantiles conformes avec correction d'échantillon fini, règle du champion (`evaluation.py`) ;
+  - orchestration et écriture en base (`train.py`) ;
+  - suivi MLflow avec 1 run parent et 76 runs enfants (`tracking.py`).
+- **Rapports générés depuis la base**, sans chiffre saisi à la main :
+  - `docs/eda/EDA.md` + 3 graphiques (`make eda`) ;
+  - `docs/results/forecast-report.md` (`make report`).
+
+### 2. Résultats réels (run 3, données `etl_run_id = 5`)
+- **W3 (test final)**, gain contre la persistance : −4,7 % / −10,1 % / −18,5 % à 1/3/6 mois. Gain contre `SeasonalNaive` : +80,2 % / +56,7 % / +24,5 %. PICP 80 % : 81,0 % / 75,8 % / 51,8 %.
+- **W1 (choc 2022)**, gain contre la persistance : +5,3 % / +10,3 % / +8,7 %. PICP : 72,6 % / 62,9 % / 54,3 %.
+- **Champions à 1 mois** : 9 LightGBM, 8 persistance, 2 Ridge.
+- **Tests** : 82 tests, dont un test anti-fuite (réécrire tous les prix futurs ne change aucune variable explicative) et un test de couverture conforme sur des erreurs simulées (80 % ± 2 points).
+
+### 3. Décisions prises avec Ahmad
+1. **EDA en script** générant du Markdown plutôt qu'un notebook (aucune nouvelle dépendance, reproductible, relisible sur GitHub).
+2. **Nouvelle règle du champion (ADR-010)** : la persistance est ajoutée aux candidats ; le champion est la famille de MASE médian minimal sur W1+W2.
+
+### 4. Ce qui a échoué ou déçu (et ce que nous en faisons)
+1. **Une référence trop faible flattait les résultats** : « +79 % contre `SeasonalNaive` » à 1 mois, alors que cette référence utilise un prix vieux de 11 mois. La persistance a été ajoutée, et le gain contre elle est publié en premier.
+2. **Sur W3, les modèles appris perdent contre la persistance** et l'intervalle à 6 mois couvre trop peu de cas (52 %). Diagnostic par SQL et par l'EDA : retournement du marché (hausse en W2, chute de 17 à 27 % en W3). Ce n'est pas un bug. **Rien n'a été réajusté sur W3** ; les pistes sont listées dans ADR-010, à évaluer sur des mois futurs.
+3. **Calibration et métriques lentes (70 s)** : boucles Python sur des masques booléens. Vectorisées (jointure + `groupby`) : **1,2 s**. La campagne passe de 4 min 48 s à 3 min 34 s, mais l'objectif de 3 min n'est pas atteint.
+4. **`tabulate` absent de l'image** (nécessaire à `DataFrame.to_markdown`) : petit utilitaire `md_table` écrit plutôt que d'ajouter une dépendance.
+
+### 5. Ce que nous avons appris
+- **Le choix de la référence fait le résultat** : toujours comparer un modèle de prix à la persistance, la référence la plus difficile à battre à court terme.
+- **Un test hors échantillon ne sert qu'une fois.** Dès qu'on le regarde, toute décision qui suit doit être étiquetée comme telle ; le vrai juge sera les mois futurs.
+- **Les intervalles conformes garantissent une couverture seulement si l'avenir ressemble au passé** : leur sous-couverture est un signal de changement de régime, utile pour le détecteur d'anomalies du Sprint 3.

@@ -37,6 +37,8 @@ Tous les marchés d'un groupe sont découpés sur la **même date de calendrier 
 | **Fenêtre 2 (`VAL_W2_24_25`)** | **Validation 2 (Stabilisation)** — Choix du champion & hyperparamètres | `2024-06-15` | `2024-07` $\rightarrow$ `2025-06` | **738 / 738 séries (100 %)** | **19 / 19 groupes** |
 | **Fenêtre 3 (`TEST_W3_25_26`)** | **Test Final *Hold-out*** — Rapport final de performance hors-échantillon | `2025-08-15` | `2025-09` $\rightarrow$ `2026-08/09` | **738 / 738 séries (100 %)** | **19 / 19 groupes** |
 
+> **Mise à jour Sprint 2 (2026-11-10)** : la règle de sélection des §2.3–2.4 est **remplacée** par celle d'[`ADR-010`](./010-protocole-de-prevision-baseline-persistance-et-selection.md) (persistance ajoutée aux candidats, MASE médian minimal sur W1+W2). Le nombre de runs MLflow passe à 1 parent + 76 enfants (4 familles).
+
 ### 2.3 Sélection du modèle champion sur les Fenêtres 1–2 et Rapport final sur la Fenêtre 3
 Pour éliminer tout biais de sélection sur le jeu de test (*Test Set Snooping*) :
 1. **Choix du modèle champion** (entre `LightGBM_Global`, `Ridge_Seasonal` / `SARIMA` et `SeasonalNaive`) pour chaque `(groupe, horizon)` : effectué **exclusivement sur les performances agrégées des Fenêtres de Validation 1 et 2**.
