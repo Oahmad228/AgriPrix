@@ -53,3 +53,6 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea/
+
+# Local AI conversation transcripts (not part of the deliverable)
+HISTORIQUE_CONVERSATION.md
