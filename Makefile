@@ -4,13 +4,14 @@
 # exclusively inside Docker containers (Zero host dependency).
 # =============================================================================
 
-.PHONY: help up down ps logs lint format test etl train clean
+.PHONY: help build up down ps logs lint format test etl train clean
 
 COMPOSE := docker compose
 RUN_JOB := $(COMPOSE) --profile jobs run --rm job-runner
 
 help: ## Show available Makefile targets
 	@echo "AgriPrix Observatory — Available commands:"
+	@echo "  make build   : Build the shared application image (agriprix-app:latest)"
 	@echo "  make up      : Build and start all MVP services in background (db, mlflow, api, dashboard)"
 	@echo "  make down    : Stop and remove running containers"
 	@echo "  make ps      : Show container status and healthchecks"
@@ -22,8 +23,11 @@ help: ## Show available Makefile targets
 	@echo "  make train   : Run the ML global training and anomaly detection pipeline inside Docker"
 	@echo "  make clean   : Stop containers and remove volumes (resets database)"
 
-up: ## Start all MVP services (PostgreSQL, MLflow, FastAPI, Streamlit)
-	$(COMPOSE) up -d --build
+build: ## Build the shared application image used by every Python service
+	$(COMPOSE) build api
+
+up: ## Start all MVP services (PostgreSQL, MLflow, FastAPI, Streamlit) and wait for healthchecks
+	$(COMPOSE) up -d --build --wait
 
 down: ## Stop all running services
 	$(COMPOSE) --profile jobs down
