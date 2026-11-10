@@ -167,3 +167,15 @@ def test_persistence_wins_when_learned_models_do_not_beat_it() -> None:
 
 def test_windows_never_overlap_test_with_selection() -> None:
     assert max(VAL_W1.eval_months) < min(TEST_W3.eval_months)
+
+
+def test_ridge_never_extrapolates_beyond_training_returns() -> None:
+    panel = make_panel()
+    data = build_supervised(panel, [1, 2, 3], 1, None)
+    train = _train_rows(data, month_index(2022, 12))
+    model = make_model("Ridge_Seasonal").fit(train)
+    extreme = data.tail(1).copy()
+    extreme[NUMERIC_FEATURES[:5]] = 50.0  # lags 50 log-points away: never seen in training
+    price = model.predict(extreme)[0]
+    ratio = math.log(price / extreme["anchor_value"].iloc[0])
+    assert train["target"].min() - 1e-9 <= ratio <= train["target"].max() + 1e-9

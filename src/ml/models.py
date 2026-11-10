@@ -88,10 +88,15 @@ class RidgeSeasonal:
         self.categories = sorted(train["commodity_code"].unique())
         self.pipeline = make_pipeline(StandardScaler(), Ridge(alpha=self.alpha))
         self.pipeline.fit(self._matrix(train), train["target"])
+        # A linear model can extrapolate an absurd log-return from an unusual input (e.g. a
+        # price spike in the lags) and exp() turns it into an absurd price. Predictions are
+        # kept within the range of log-returns actually seen in training, which is what the
+        # tree-based model does by construction.
+        self.return_range = (float(train["target"].min()), float(train["target"].max()))
         return self
 
     def predict(self, rows: pd.DataFrame) -> np.ndarray:
-        returns = self.pipeline.predict(self._matrix(rows))
+        returns = np.clip(self.pipeline.predict(self._matrix(rows)), *self.return_range)
         return np.exp(rows["anchor_log"].to_numpy() + returns)
 
 
