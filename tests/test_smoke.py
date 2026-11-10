@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-from src.api.main import app, check_database_readonly_connection
+from src.api.db import check_database_readonly_connection
+from src.api.main import app
 from src.config import Settings, get_settings
 from src.dashboard.app import fetch_api_health
 from src.dashboard.app import main as dashboard_main
@@ -61,7 +62,7 @@ def test_api_health_returns_503_when_database_is_down() -> None:
 
 def test_readonly_connection_hides_driver_error_text() -> None:
     """Verify a failed connection returns a generic message (no host or role names)."""
-    with patch("src.api.main.create_engine", side_effect=SQLAlchemyError("secret-host role-x")):
+    with patch("src.api.db.get_engine", side_effect=SQLAlchemyError("secret-host role-x")):
         ok, detail = check_database_readonly_connection()
     assert ok is False
     assert detail == "database unreachable"

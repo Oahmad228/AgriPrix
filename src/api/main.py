@@ -1,29 +1,48 @@
-"""FastAPI service entry point for AgriPrix Observatory (Phase 3 foundation)."""
+"""FastAPI service entry point for AgriPrix Observatory.
+
+Security posture of the public API (ENF-04/05/06):
+- connects to the warehouse with a read-only role, inside READ ONLY transactions;
+- exposes GET routes only; nothing can write or trigger a training run;
+- rate-limited per client (HTTP 429 beyond the quota);
+- CORS restricted to configured origins;
+- unexpected errors return a generic message; details go to the server logs only.
+"""
 
 import logging
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from src import __version__
+from src.api.db import check_database_readonly_connection
+from src.api.limits import limiter
+from src.api.routes import router
 from src.config import get_settings
 
 settings = get_settings()
 logger = logging.getLogger("agriprix.api")
 
+DESCRIPTION = """
+Public read-only API of AgriPrix Observatory: food prices of West Africa (UEMOA, WFP data,
+licence CC BY-IGO 3.0) and Morocco (FAOSTAT, CC BY 4.0), price alerts and 1/3/6-month
+forecasts with 80 % intervals.
+
+Forecasts and alerts are computed by AgriPrix Observatory, not by WFP or FAO. Every value is
+expressed in local currency (XOF, MAD) or as an index; nothing is converted.
+"""
+
 app = FastAPI(
     title="AgriPrix Observatory API",
-    description=(
-        "Public REST API for West Africa (UEMOA) and Morocco food price monitoring, "
-        "anomaly detection, and 1, 3, and 6-month conformal forecasting."
-    ),
+    description=DESCRIPTION,
     version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
 )
-
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -31,20 +50,13 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+app.include_router(router)
 
 
-def check_database_readonly_connection() -> tuple[bool, str]:
-    """Verify connectivity to agriprix_dw using the read-only SQL role."""
-    try:
-        engine = create_engine(settings.readonly_database_url, pool_pre_ping=True)
-        with engine.connect() as conn:
-            role_name = conn.execute(text("SELECT current_user")).scalar_one()
-        engine.dispose()
-        return True, f"connected as {role_name}"
-    except SQLAlchemyError:
-        # Never expose driver error text (hosts, role names) on a public endpoint.
-        logger.exception("Read-only warehouse connection failed")
-        return False, "database unreachable"
+@app.exception_handler(Exception)
+async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled error on %s", request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 @app.get(
