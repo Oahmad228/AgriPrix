@@ -4,7 +4,7 @@
 # exclusively inside Docker containers (Zero host dependency).
 # =============================================================================
 
-.PHONY: help build up down ps logs lint format test etl etl-offline reconcile train eda report clean
+.PHONY: help build up down ps logs lint format test etl etl-offline reconcile train eda report validate-anomalies perf clean
 
 COMPOSE := docker compose
 RUN_JOB := $(COMPOSE) --profile jobs run --rm job-runner
@@ -25,6 +25,8 @@ help: ## Show available Makefile targets
 	@echo "  make train   : Run the ML global training and anomaly detection pipeline inside Docker"
 	@echo "  make eda     : Regenerate docs/eda/EDA.md (exploratory analysis) from the warehouse"
 	@echo "  make report  : Regenerate docs/results/forecast-report.md from the active training run"
+	@echo "  make validate-anomalies : Score the detector on the a-priori shock catalog (real data)"
+	@echo "  make perf    : Benchmark API latency on the real warehouse (p95 < 300 ms)"
 	@echo "  make clean   : Stop containers and remove volumes (resets database)"
 
 build: ## Build the shared application image used by every Python service
@@ -68,6 +70,12 @@ eda: ## Regenerate the exploratory data analysis report
 
 report: ## Regenerate the forecasting results report
 	$(RUN_JOB) python -m src.ml.report
+
+validate-anomalies: ## Validate the anomaly detector on documented historical shocks
+	$(RUN_JOB) python -m src.anomaly.validation
+
+perf: ## Measure API latency (p50/p95) on the real warehouse
+	$(RUN_JOB) python -m src.api.perf
 
 clean: ## Stop containers and remove named volumes
 	$(COMPOSE) --profile jobs down -v
