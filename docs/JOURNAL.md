@@ -304,3 +304,32 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
    - Retour du seuil d'alerte hors période de choc à **$\le 5\,\%$** (conforme à `KPI-M4` et à la queue théorique de $|Z| \ge 2{,}5$, au lieu de $10\,\%$).
 5. **Vérification de `.gitignore` sur `data/raw/`** :
    - Confirmé par `git check-ignore -v data/raw/wfp_SEN.csv` (`.gitignore:37:data/raw/*`) et `git ls-files data/` (seuls les `.gitkeep` sont suivis, aucun CSV n'est commité).
+
+---
+
+## Reprise du projet et Sprint 0.5 — Remise à niveau du socle
+**Date** : 2026-11-10 — **Contributeurs** : Ahmad & Claude Code (reprise après Antigravity)
+
+### 1. Audit de reprise (Étape 0) : ce qui a été vérifié par exécution
+- Stack `docker compose up -d --build --wait` : 4 services `healthy`, ports liés à `127.0.0.1`. Lint et 6 tests au vert.
+- `data/raw/` non commité (`git check-ignore` → `.gitignore:37`). Seuil hors choc bien revenu à ≤ 5 %. Hébergement HTTPS bien dans le Sprint 4.
+- 6 liens sur 7 des sources de chocs valides. Le lien HCP de `SHOCK-04` était mort (« Page not found »).
+
+### 2. Ce qui était faux ou fragile, et ce qui a changé
+1. **`requirements.lock` non utilisé** (16 paquets déjà différents de l'image). L'image l'installe désormais avec `--no-deps` + `pip check`, et l'image de base est figée (`python:3.11.18-slim`). Voir `ADR-008`.
+2. **Cache Docker cassé** (12 min de build à chaque modification du code). Couches réordonnées : rebuild mesuré à **4,3 s**.
+3. **CI non fonctionnelle** : l'étape `docker compose --profile jobs build job-runner` répondait `No services to build` (seul `api` déclare `build:`), donc l'image n'existait pas sur un runner neuf. Correction : `docker compose build api`, puis `up --wait` à la place de `sleep 10`, et logs affichés en cas d'échec. Build multi-arch retiré jusqu'au choix de l'hébergeur.
+4. **`/api/v1/health` répondait `ok` même base coupée** et renvoyait le texte brut de l'erreur du pilote (noms d'hôte et de rôle). Il répond maintenant **HTTP 503 `degraded`** avec un message générique, vérifié en arrêtant réellement le conteneur `db`.
+5. **Test d'isolation des rôles qui passait en silence sans base.** Il échoue désormais (vérifié en lançant le test base arrêtée : `AssertionError: warehouse must be reachable`).
+6. **README au présent pour des fonctions non construites.** Réécrit : état réel, cibles au futur, commandes sans `make` (absent sous Windows).
+7. **Lien HCP** remplacé par la note IPC d'août 2022 du HCP (HTTP 200 vérifié).
+8. **`CLAUDE.md`** ajouté (règles du projet pour les agents IA).
+
+### 3. Ce qui a échoué
+- **Docker Desktop ne démarrait plus** : des fichiers socket bloqués (`%LOCALAPPDATA%\Docker\run\dockerInference`, `docker-secrets-engine\engine.sock`), restés après un arrêt brutal le 3 novembre, ne pouvaient plus être supprimés. Résolu en quittant Docker et en renommant ces dossiers. Il ne faut **jamais** cliquer sur « Reset to factory defaults » (efface images et volumes).
+- Le lint a rejeté l'ordre de mes imports dans les tests (`I001`), corrigé avec `ruff check --fix` : la CI locale joue bien son rôle.
+
+### 4. Ce que nous avons appris
+- **Un fichier de lock qui n'est pas lu par le build ne verrouille rien.** Il faut toujours le prouver par un `diff` entre le lock et `pip freeze` dans l'image.
+- **Un test qui ne peut pas échouer ne teste rien.** Pour chaque garde-fou, provoquer la panne pour de vrai (arrêter la base) et vérifier que le test casse.
+- **Une couverture de 100 % sur un squelette n'a aucune valeur de preuve** : ce chiffre ne doit pas apparaître dans un CV.

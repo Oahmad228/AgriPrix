@@ -39,6 +39,8 @@ Or, les deux meilleures options du marché pour un étudiant reposent sur **deux
 
 Nous retenons une **stratégie agnostique compatible à 100 % avec l'Option 1 (Oracle Cloud ARM64 Always Free — Cible privilégiée à 0 €) ET l'Option 2 (VPS x86_64 / ARM64 — Solution de repli immédiate)**, tout en écartant l'Option 3 :
 
+> **Mise à jour 2026-11-10 (`ADR-008`)** : le job de build multi-architecture est retiré de la CI tant que l'hébergeur n'est pas choisi. Il sera réintroduit au Sprint 4 uniquement si la démo est hébergée sur une machine `arm64`.
+
 1. **Construction d'images Multi-Architecture (`linux/amd64` + `linux/arm64`) dans la CI (`US-02`)** :
    - Dans le workflow GitHub Actions (`.github/workflows/ci.yml`), nous utilisons **`docker/setup-qemu-action`** (QEMU est un émulateur permettant de compiler du code ARM sur un serveur x86) et **`docker/setup-buildx-action`** (Docker Buildx est le moteur de construction avancé de Docker supportant plusieurs architectures simultanées).
    - Les images publiées sur **GitHub Container Registry (`ghcr.io`)** portent un manifeste multi-arch (`platforms: linux/amd64,linux/arm64`).
