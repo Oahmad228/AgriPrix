@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,41 +33,61 @@ def test_settings_urls_and_cors() -> None:
 
 
 def test_api_health_endpoint() -> None:
-    """Verify /api/v1/health responds with HTTP 200 and expected schema."""
+    """Verify /api/v1/health returns HTTP 200 when the warehouse is reachable."""
     client = TestClient(app)
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["service"] == "agriprix-api"
-    assert "database" in payload
+    assert payload["database"]["connected"] is True
     assert "feature_flags" in payload
 
 
-def test_database_roles_and_isolation() -> None:
-    """Verify agriprix_dw connection and that agriprix_api_readonly cannot connect to mlflow_db."""
-    ok, detail = check_database_readonly_connection()
-    assert isinstance(ok, bool)
-    assert isinstance(detail, str)
+def test_api_health_returns_503_when_database_is_down() -> None:
+    """Verify /api/v1/health reports 503 'degraded' without leaking driver errors."""
+    client = TestClient(app)
+    with patch(
+        "src.api.main.check_database_readonly_connection",
+        return_value=(False, "database unreachable"),
+    ):
+        response = client.get("/api/v1/health")
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["status"] == "degraded"
+    assert payload["database"]["connected"] is False
+    assert payload["database"]["detail"] == "database unreachable"
 
-    # When running inside Docker Compose with db service up, verify strict role isolation
-    if ok:
-        cfg = get_settings()
-        assert "agriprix_api_readonly" in detail
-        # Verify agriprix_api_readonly is denied access to mlflow_db
-        forbidden_url = (
-            f"postgresql+psycopg://{cfg.dw_readonly_user}:{cfg.dw_readonly_password}"
-            f"@{cfg.postgres_host}:{cfg.postgres_port}/mlflow_db"
-        )
-        engine = create_engine(forbidden_url)
-        try:
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            raise AssertionError("agriprix_api_readonly should not be able to connect to mlflow_db")
-        except SQLAlchemyError:
-            pass
-        finally:
-            engine.dispose()
+
+def test_readonly_connection_hides_driver_error_text() -> None:
+    """Verify a failed connection returns a generic message (no host or role names)."""
+    with patch("src.api.main.create_engine", side_effect=SQLAlchemyError("secret-host role-x")):
+        ok, detail = check_database_readonly_connection()
+    assert ok is False
+    assert detail == "database unreachable"
+
+
+def test_database_roles_and_isolation() -> None:
+    """Verify the read-only role reaches agriprix_dw but is denied on mlflow_db.
+
+    Tests run inside Docker Compose with the db service up: an unreachable
+    database is a failure, never a silent pass.
+    """
+    ok, detail = check_database_readonly_connection()
+    assert ok, f"warehouse must be reachable from the test container: {detail}"
+    assert "agriprix_api_readonly" in detail
+
+    cfg = get_settings()
+    forbidden_url = (
+        f"postgresql+psycopg://{cfg.dw_readonly_user}:{cfg.dw_readonly_password}"
+        f"@{cfg.postgres_host}:{cfg.postgres_port}/mlflow_db"
+    )
+    engine = create_engine(forbidden_url)
+    try:
+        with pytest.raises(SQLAlchemyError, match="permission denied"), engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    finally:
+        engine.dispose()
 
 
 def test_etl_and_ml_cli_entrypoints() -> None:
