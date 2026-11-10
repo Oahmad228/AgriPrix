@@ -39,6 +39,12 @@ def test_training_campaign_writes_versioned_results(warehouse: Engine, raw_dir: 
         warehouse, "SELECT COUNT(*), COUNT(DISTINCT selection_rule) > 0 FROM fact_champion_model"
     )
     assert champions == [(6, True)]  # 2 groups x 3 horizons
+    test_quality = rows(
+        warehouse,
+        "SELECT COUNT(*) FROM fact_champion_model"
+        " WHERE test_picp_80 BETWEEN 0 AND 1 AND test_mape >= 0",
+    )
+    assert test_quality == [(6,)]  # W3 quality pre-computed for every champion
     windows = {
         w
         for (w,) in rows(warehouse, "SELECT DISTINCT eval_window FROM fact_model_metrics_by_series")

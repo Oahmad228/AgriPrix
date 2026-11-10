@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import Engine, text
 
+from src.anomaly.detector import alerts, load_scope, robust_scores
 from src.etl import db
 from src.ml import tracking
 from src.ml.data import Panel, calendar_id_of, load_panel
@@ -47,6 +48,7 @@ class TrainingResult:
     champions: pd.DataFrame
     forecasts: pd.DataFrame  # production forecasts of the champions
     report: dict[str, float] = field(default_factory=dict)
+    anomalies: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def _train_rows(data: pd.DataFrame, cutoff: int) -> pd.DataFrame:
@@ -211,6 +213,34 @@ def choose_champions(metrics: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def add_test_quality(champions: pd.DataFrame, metrics: pd.DataFrame) -> pd.DataFrame:
+    """Attach each champion's W3 coverage and MAPE (weighted by evaluated points)."""
+    w3 = metrics[metrics["eval_window"] == TEST_W3.name]
+    keys = [*GROUP_KEYS, "horizon_months", "model_name"]
+    weighted = (
+        w3.assign(
+            picp_w=w3["picp_80"] * w3["n_eval_points"],
+            mape_w=w3["mape"] * w3["n_eval_points"],
+            n_picp=w3["n_eval_points"].where(w3["picp_80"].notna()),
+        )
+        .groupby(keys)[["picp_w", "mape_w", "n_picp", "n_eval_points"]]
+        .sum()
+    )
+    quality = pd.DataFrame(
+        {
+            "test_picp_80": weighted["picp_w"] / weighted["n_picp"],
+            "test_mape": weighted["mape_w"] / weighted["n_eval_points"],
+        }
+    ).reset_index()
+    merged = champions.merge(
+        quality,
+        left_on=[*GROUP_KEYS, "horizon_months", "champion_model_name"],
+        right_on=keys,
+        how="left",
+    )
+    return merged.drop(columns="model_name")
+
+
 def production_forecasts(
     panel: Panel, champions: pd.DataFrame, predictions: pd.DataFrame, cache: SupervisedCache
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -341,9 +371,12 @@ def run_training(engine: Engine, *, git_sha: str = "dev-local", use_mlflow: bool
         with _stage("conformal + metrics"):
             predictions, quantiles = calibrate(predictions)
             metrics = compute_metrics(panel, predictions)
-            champions = choose_champions(metrics)
+            champions = add_test_quality(choose_champions(metrics), metrics)
         with _stage("production forecasts"):
             forecasts, prod_quantiles = production_forecasts(panel, champions, predictions, cache)
+        with engine.connect() as conn, _stage("anomaly detection"):
+            _meta, prices = load_scope(conn)
+            anomalies = alerts(robust_scores(prices)) if not prices.empty else pd.DataFrame()
         result = TrainingResult(
             predictions,
             metrics,
@@ -351,6 +384,7 @@ def run_training(engine: Engine, *, git_sha: str = "dev-local", use_mlflow: bool
             champions,
             forecasts,
             headline_report(metrics, champions),
+            anomalies,
         )
         with _stage("mlflow tracking"):
             run_ids = (
@@ -405,7 +439,7 @@ def _write(engine: Engine, run_id: int, panel: Panel, result: TrainingResult, ru
         )
         c_cols = [
             "country_iso3", "commodity_group", "horizon_months", "champion_model_name",
-            "median_rel_mae_val", "median_mase_val", "selection_rule",
+            "median_rel_mae_val", "median_mase_val", "selection_rule", "test_picp_80", "test_mape",
         ]  # fmt: skip
         db.copy_rows(
             conn,
@@ -413,6 +447,20 @@ def _write(engine: Engine, run_id: int, panel: Panel, result: TrainingResult, ru
             ["run_id", *c_cols],
             ((run_id, *(_sql(r[c]) for c in c_cols)) for r in result.champions.to_dict("records")),
         )
+        if not result.anomalies.empty:
+            a_cols = [
+                "series_id", "observed_value", "expected_value", "log_residual",
+                "z_score_robust", "yoy_change_pct", "direction", "severity",
+            ]  # fmt: skip
+            db.copy_rows(
+                conn,
+                "fact_anomaly",
+                ["run_id", "calendar_id", *a_cols],
+                (
+                    (run_id, calendar_id_of(int(r["month_idx"])), *(_sql(r[c]) for c in a_cols))
+                    for r in result.anomalies.to_dict("records")
+                ),
+            )
         f_cols = [
             "series_id", "origin_calendar_id", "target_calendar_id", "horizon_months",
             "yhat_point", "yhat_lower_80", "yhat_upper_80", "champion_model_name",
