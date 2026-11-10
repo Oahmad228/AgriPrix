@@ -419,3 +419,40 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Le choix de la référence fait le résultat** : toujours comparer un modèle de prix à la persistance, la référence la plus difficile à battre à court terme.
 - **Un test hors échantillon ne sert qu'une fois.** Dès qu'on le regarde, toute décision qui suit doit être étiquetée comme telle ; le vrai juge sera les mois futurs.
 - **Les intervalles conformes garantissent une couverture seulement si l'avenir ressemble au passé** : leur sous-couverture est un signal de changement de régime, utile pour le détecteur d'anomalies du Sprint 3.
+
+---
+
+## Sprint 3 — Détection d'anomalies validée et API publique sécurisée
+**Date** : 2026-11-10 — **Branche** : `sprint/3-anomalies-api` — **Contributeurs** : Ahmad & Claude Code
+
+### 1. Ce que nous avons construit
+- **Catalogue des chocs fixé a priori** (`src/anomaly/catalog.py`) : 5 épisodes, 41 couples (pays, produit), seuils et critère des 25 % de marchés. Il a été **committé et publié seul (`d7bfac9`) avant tout calcul sur données réelles**.
+- **Détecteur robuste** (`src/anomaly/detector.py`) intégré à `make train`, alertes versionnées dans `fact_anomaly` (`V003`) ; validation et rapport généré (`src/anomaly/validation.py`, `make validate-anomalies`).
+- **API publique** (`src/api/`) :
+  - 9 routes en `GET` typées par des modèles Pydantic (documentation OpenAPI complète) ;
+  - rôle PostgreSQL en lecture seule et transactions `READ ONLY` ;
+  - limitation de débit, CORS restreint, erreurs génériques ;
+  - explication des alertes en français ;
+  - mesure de performance (`make perf`).
+
+### 2. Résultats réels
+- **KPI-M4** : rappel 5/5 épisodes (IC 95 % : 48–100 %) ; 4,56 % d'alertes en période calme (objectif ≤ 5 %). Le choc COVID n'est détecté que de justesse (1 couple sur 16, 25 % des marchés).
+- **ENF-07** : p95 de 14 à 108 ms selon les routes (objectif < 300 ms).
+- **Tests** : 102 (CI : données synthétiques ; en local, en plus, le test KPI-M4 sur données réelles), couverture 92 %.
+
+### 3. Décisions prises avec Ahmad
+1. **Critère de détection** : ≥ 25 % des marchés d'un couple en alerte le même mois, fixé avant le calcul.
+2. **Validation** : en local sur les vraies données, et sur des données synthétiques dans la CI.
+
+### 4. Ce qui a échoué (et comment nous l'avons résolu)
+1. **La limitation de débit ne marchait pas, sans aucune erreur** : avec les versions verrouillées de FastAPI et Starlette, le middleware SlowAPI ne retrouve pas la route d'une requête et l'exempte. Trouvé grâce au test qui attend un `429` à la 61e requête. Remplacé par un décorateur sur chaque route.
+2. **Prévision absurde (MAPE de 35 millions de %)** sur un pic de prix synthétique : le modèle linéaire extrapolait une variation énorme, que l'exponentielle amplifiait. Les prévisions de Ridge sont désormais bornées à l'intervalle des variations vues à l'entraînement. Effet sur les données réelles : **aucun chiffre ne change** (rapport régénéré identique).
+3. **`/forecasts` trop lent (p95 = 279 ms)** : la couverture était recalculée à chaque appel. Elle est désormais pré-calculée à l'entraînement (`V004`), ce qui donne 31 ms.
+4. **Une mesure à 193 ms sur `/anomalies`** : la requête prend 9 ms selon `EXPLAIN ANALYZE` ; c'était du bruit (base occupée juste après les écritures). Vérifié en remesurant au calme : 44 ms.
+5. **Exemple inventé dans un brouillon d'ADR** (« 182 % ») : remplacé par une alerte réelle renvoyée par l'API (Djibo, décembre 2022, +214 %), conformément à la règle « aucun chiffre inventé ».
+6. **Docker Desktop arrêté pendant le sprint** : il s'était mis à jour (29.4.2 → 29.9.3) en laissant des sockets bloqués, même cause que le matin. Mêmes dossiers déplacés de côté ; données intactes.
+
+### 5. Ce que nous avons appris
+- **Publier ses critères avant de regarder les résultats** (pré-enregistrement) : c'est la seule façon de rendre un 5/5 crédible. Il faut aussi donner l'intervalle de confiance, très large avec 5 événements.
+- **Une protection de sécurité doit être testée par son effet** (le `429`), pas par sa présence dans la configuration.
+- **Calculer en batch ce qui coûte, servir en lecture simple** : c'est le principe de séparer le calcul (entraînement) du service (API).

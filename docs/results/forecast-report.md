@@ -1,6 +1,6 @@
 # Résultats des prévisions (rapport généré)
 
-> Généré par `python -m src.ml.report` depuis la campagne active `training_run.run_id = 3` (données ETL `etl_run_id = 5`, dernières données 2026-10-01, commit `1f5812b`, run MLflow parent `babd602015d1400d9ff1c5da58edad0e`). Aucun chiffre n'est saisi à la main.
+> Généré par `python -m src.ml.report` depuis la campagne active `training_run.run_id = 6` (données ETL `etl_run_id = 5`, dernières données 2026-10-01, commit `d7bfac9`, run MLflow parent `58e171186e3a4137a466ae4eaa749e60`). Aucun chiffre n'est saisi à la main.
 
 ## 1. Test final hors échantillon — fenêtre W3 (cibles 2025-09 → 2026-08)
 
