@@ -4,7 +4,7 @@
 # exclusively inside Docker containers (Zero host dependency).
 # =============================================================================
 
-.PHONY: help build up down ps logs lint format test etl etl-offline reconcile train clean
+.PHONY: help build up down ps logs lint format test etl etl-offline reconcile train eda report clean
 
 COMPOSE := docker compose
 RUN_JOB := $(COMPOSE) --profile jobs run --rm job-runner
@@ -23,6 +23,8 @@ help: ## Show available Makefile targets
 	@echo "  make etl-offline : Reload the warehouse from files already in data/raw (no download)"
 	@echo "  make reconcile   : Recompute eligible series on the 2026-11-03 audit snapshot"
 	@echo "  make train   : Run the ML global training and anomaly detection pipeline inside Docker"
+	@echo "  make eda     : Regenerate docs/eda/EDA.md (exploratory analysis) from the warehouse"
+	@echo "  make report  : Regenerate docs/results/forecast-report.md from the active training run"
 	@echo "  make clean   : Stop containers and remove volumes (resets database)"
 
 build: ## Build the shared application image used by every Python service
@@ -60,6 +62,12 @@ reconcile: ## Reproduce the Phase 0-2 audit count (738) on the frozen snapshot
 
 train: ## Execute the ML forecasting and anomaly detection pipeline
 	$(RUN_JOB) python -m src.ml.cli
+
+eda: ## Regenerate the exploratory data analysis report
+	$(RUN_JOB) python -m src.eda.report
+
+report: ## Regenerate the forecasting results report
+	$(RUN_JOB) python -m src.ml.report
 
 clean: ## Stop containers and remove named volumes
 	$(COMPOSE) --profile jobs down -v
