@@ -18,7 +18,7 @@ from slowapi.errors import RateLimitExceeded
 
 from src import __version__
 from src.api.db import check_database_readonly_connection
-from src.api.limits import limiter
+from src.api.limits import current_request, limiter
 from src.api.routes import router
 from src.config import get_settings
 
@@ -51,6 +51,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+
+
+@app.middleware("http")
+async def remember_request(request: Request, call_next):
+    """Expose the current request to the rate limiter's exemption rule."""
+    token = current_request.set(request)
+    try:
+        return await call_next(request)
+    finally:
+        current_request.reset(token)
 
 
 @app.exception_handler(Exception)

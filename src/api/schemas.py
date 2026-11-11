@@ -89,6 +89,7 @@ class Forecast(BaseModel):
     currency_code: str
     horizon_months: int
     origin_period: date
+    last_value: float | None = Field(description="Observed value at the forecast origin")
     target_period: date
     yhat: float
     lower_80: float

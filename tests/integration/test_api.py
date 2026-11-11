@@ -188,3 +188,24 @@ def test_api_is_read_only() -> None:
         "/api/v1/series/{series_id}/history", "/api/v1/forecasts", "/api/v1/anomalies",
         "/api/v1/models/metrics", "/api/v1/runs/active", "/api/v1/health",
     } <= paths  # fmt: skip
+
+
+def test_internal_service_calls_are_not_limited_but_proxied_visitors_are(api: TestClient) -> None:
+    """The dashboard calls the API from the Docker network (private IP, no proxy header)."""
+    quota = int(get_settings().api_rate_limit.split("/")[0])
+    internal = TestClient(app, client=("172.18.0.5", 50000))
+    assert {internal.get("/api/v1/countries").status_code for _ in range(quota + 5)} == {200}
+
+    limiter.reset()
+    visitor = {"X-Forwarded-For": "203.0.113.7"}  # set by the HTTPS reverse proxy
+    codes = [
+        internal.get("/api/v1/countries", headers=visitor).status_code for _ in range(quota + 1)
+    ]
+    assert codes[-1] == 429
+    other = {"X-Forwarded-For": "198.51.100.9"}  # another visitor keeps a full quota
+    assert internal.get("/api/v1/countries", headers=other).status_code == 200
+
+
+def test_forecasts_carry_the_last_observed_price(api: TestClient) -> None:
+    items = api.get("/api/v1/forecasts", params={"country": "SEN"}).json()["items"]
+    assert items and all(f["last_value"] > 0 for f in items)
