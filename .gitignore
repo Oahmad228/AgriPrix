@@ -56,3 +56,8 @@ Thumbs.db
 
 # Local AI conversation transcripts (not part of the deliverable)
 HISTORIQUE_CONVERSATION.md
+
+# Third-party agent skills: reinstall from skills-lock.json (npx skills experimental_install)
+.claude/skills/
+# Impeccable runtime captures
+.impeccable/review/
