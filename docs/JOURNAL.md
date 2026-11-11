@@ -456,3 +456,48 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Publier ses critères avant de regarder les résultats** (pré-enregistrement) : c'est la seule façon de rendre un 5/5 crédible. Il faut aussi donner l'intervalle de confiance, très large avec 5 événements.
 - **Une protection de sécurité doit être testée par son effet** (le `429`), pas par sa présence dans la configuration.
 - **Calculer en batch ce qui coûte, servir en lecture simple** : c'est le principe de séparer le calcul (entraînement) du service (API).
+
+---
+
+## Sprint 4 — Dashboard, mise à jour mensuelle et préparation de l'hébergement
+**Dates** : 2026-11-11 — **Branche** : `sprint/4-dashboard-hosting` — **Contributeurs** : Ahmad & Claude Code
+
+### 1. Ce que nous avons construit
+- **Dashboard Streamlit**, conçu avec les trois skills d'interface choisis par Ahmad (`frontend-design`, `impeccable`, `ui-ux-pro-max`) :
+  - produit cadré dans `PRODUCT.md`, direction « Calendrier des saisons » consignée dans `.impeccable/surfaces/dashboard.md`, système visuel documenté dans `DESIGN.md` ;
+  - rail de filtres vert, police Public Sans auto-hébergée (licence OFL) ;
+  - signature : la **bande de soudure** (juin–septembre) sur chaque graphique de prix, et une colonne « Soudure » pour chaque alerte ;
+  - alertes signalées par la forme **et** la couleur ;
+  - prévisions avec leur intervalle à 80 % et la couverture mesurée en test ;
+  - onglet « Méthode & qualité » dont les textes sont **calculés à partir des chiffres** de la période choisie.
+- **API** : la limitation de débit s'applique au visiteur réel (en-tête `X-Forwarded-For` posé par Caddy) et non aux appels internes du dashboard ; `/forecasts` renvoie le dernier prix observé.
+- **Une image par service** (dette d'ADR-008 remboursée), mots de passe de la base lus uniquement dans `.env`, `docker-compose.prod.yml` (seul Caddy est exposé, HTTPS automatique), service `scheduler` pour la mise à jour mensuelle, guide de déploiement `docs/deploiement.md` et script `deploy/deploy.sh`.
+- **CI** : construction de toutes les images, vérification que la configuration de production refuse de démarrer sans ses secrets, construction des 4 images de production pour `linux/arm64`.
+
+### 2. Résultats réels
+- **Tests** : 122 (dont un rendu complet du dashboard avec Streamlit AppTest), couverture 91 %, CI verte sur `f529a3f`, y compris les 4 constructions ARM64.
+- **Images** : API 2,05 Go → **459 Mo** ; ni outils de test ni `lightgbm` dans les images de l'API et du dashboard, et aucun pilote SQL dans celle du dashboard.
+- **Répétition locale de la production** :
+  - routes HTTPS servies, redirection 308, en-têtes de sécurité présents, ports internes fermés, WebSocket en `101` à travers Caddy ;
+  - 429 à la 61ᵉ requête, **y compris en falsifiant `X-Forwarded-For`** à chaque requête ;
+  - mise à jour depuis l'image du scheduler : 7 fichiers retéléchargés et vérifiés, 0 observation modifiée, **entraînement sauté**.
+  - entraînement forcé depuis l'image de production : campagne 7 promue en 4 min 46 s. **Reproductibilité** : ses 36 512 métriques et 2 346 prévisions sont identiques à la décimale près à celles de la campagne 6, entraînée dans l'image de développement (lock figé et graine aléatoire fixée).
+
+### 3. Décisions prises avec Ahmad
+1. Public prioritaire : la situation des prix d'abord, la méthode dans un onglet dédié ; Streamlit conservé ; interface en français simple.
+2. Direction visuelle « Calendrier des saisons » ; police téléchargée depuis google/fonts et auto-hébergée.
+3. Hébergement : **Oracle Cloud gratuit (ARM)** avec un sous-domaine **DuckDNS** (ADR-012).
+
+### 4. Ce qui a échoué (et comment nous l'avons résolu)
+1. **Graphique vide** : la trace fictive servant de légende à la bande de soudure (`x=[None]`) faisait choisir à Plotly un axe numérique, ce qui masquait tous les prix. Correction : axe de dates déclaré explicitement, et test de non-régression.
+2. **Texte faux selon la période** : la phrase « aucun modèle appris ne bat la persistance » était écrite en dur, alors qu'elle n'est vraie que pour la période de test. Elle est désormais calculée à partir des chiffres affichés.
+3. **Quota partagé** : sans exemption des appels internes, tous les visiteurs du dashboard auraient partagé les 60 requêtes par minute de son adresse.
+4. **Fenêtre « Connection error »** signalée par Ahmad : elle venait de mes redémarrages du conteneur pendant les tests (aucun plantage : 0 redémarrage automatique, pas de manque de mémoire). Correction : rechargement à chaud de Streamlit en développement (surveillance des fichiers par sondage, nécessaire à travers le montage Windows).
+5. **Docker Desktop arrêté trois fois** en cours de session (ordinateur mis en veille ou mise à jour), avec des sockets bloqués à chaque redémarrage. Même procédure à chaque fois ; les données n'ont jamais été perdues.
+6. **Un lanceur de skill téléchargeant un binaire** (`impeccable`) : je ne l'ai pas exécuté, et j'ai utilisé la procédure de repli prévue par le skill (lecture directe du contexte, choix soumis à Ahmad via l'outil de question).
+7. **Les propositions de `ui-ux-pro-max`** (fond sombre, accent vert vif, police monospace) correspondaient aux réflexes que `frontend-design` et `impeccable` désignent comme des défauts : je les ai gardées pour les règles d'accessibilité et de graphiques, pas pour la direction visuelle.
+
+### 5. Ce que nous avons appris
+- **Un texte d'interface est une donnée** : s'il commente des chiffres, il doit être calculé à partir d'eux, sinon il ment dès qu'on change un filtre.
+- **Tester une sécurité en l'attaquant** : la limitation de débit n'est prouvée qu'après avoir tenté de la contourner avec un faux `X-Forwarded-For`.
+- **Une règle d'architecture se garantit mieux par l'image que par la discipline** : sans pilote SQL dans son image, le dashboard ne peut pas contourner l'API.

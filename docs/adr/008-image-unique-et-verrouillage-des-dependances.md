@@ -1,6 +1,6 @@
 # ADR-008 : Image Docker unique jusqu'au Sprint 3 et verrouillage effectif des dépendances
 
-- **Statut** : Accepté
+- **Statut** : Accepté — dette remboursée au Sprint 4 (voir §4)
 - **Date** : 2026-11-10
 - **Décideurs** : Ahmad & assistant IA (Claude Code)
 - **Exigences liées** : `ENF-03` (reproductibilité), `US-01`, `US-02`, `US-16`
@@ -45,3 +45,7 @@ Au 2026-11-10, l'audit de reprise (Étape 0) a constaté par exécution :
 ### Critère de remboursement de la dette (Sprint 4)
 - Les images `runtime-api` et `runtime-dashboard` ne contiennent ni `pytest`, ni `ruff`, ni `lightgbm`. Ce sera vérifié par un test automatique (`pip show` doit échouer pour ces paquets).
 - La taille de chaque image sera mesurée et reportée ici.
+
+## 4. Mise à jour du 2026-11-11 (Sprint 4) : dette remboursée
+
+Le découpage a été fait avant la mise en ligne, comme prévu : une image par service, construite à partir d'un sous-ensemble exact du lock. Mesures : API **459 Mo**, dashboard 1,19 Go, MLflow 1,46 Go, jobs 1,59 Go, dev 2,06 Go (contre 2,05 Go pour l'image unique). Ni `pytest`, ni `ruff`, ni `lightgbm` dans les images de l'API et du dashboard (vérifié avec `pip show`). Le build `arm64` est réintroduit dans la CI, l'hébergeur retenu étant Oracle ARM. Détails : [`ADR-012`](./012-mise-en-production-oracle-duckdns-caddy.md).

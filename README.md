@@ -8,7 +8,7 @@
 **Plateforme data de bout en bout pour le suivi, la détection d'anomalies et la prévision (1, 3 et 6 mois, avec intervalles d'incertitude) des prix alimentaires en Afrique de l'Ouest (UEMOA) et au Maroc.**
 
 > **État du projet (novembre 2026)** : socle technique et entrepôt de données opérationnels (ETL vérifié, 343 079 observations).
-> Les prévisions, la détection d'anomalies et l'API publique fonctionnent ; le dashboard et la mise en ligne sont **en cours de construction**
+> Prévisions, alertes, API et dashboard fonctionnent en local ; la configuration de production (HTTPS, mise à jour mensuelle) est prête, **la démo publique n'est pas encore en ligne**
 > (voir la feuille de route ci-dessous). Ce README ne présente comme acquis que ce qui a été exécuté.
 
 ---
@@ -36,7 +36,7 @@ Règles d'éligibilité : série mensuelle du panier (riz, mil, sorgho, maïs, n
 
 ### Prévisions (Sprint 2 — chiffres mesurés)
 
-Campagne active `training_run.run_id = 3` (données `etl_run_id = 5`). Les chiffres viennent du rapport généré [`docs/results/forecast-report.md`](docs/results/forecast-report.md), et le suivi des runs est dans MLflow.
+Campagne active `training_run.run_id = 7` (données `etl_run_id = 7`, identiques à celles de `etl_run_id = 5`). Les tableaux du rapport sont identiques depuis la campagne 3 (lock figé, graine fixée ; vérifié en SQL entre les campagnes 6 et 7). Les chiffres viennent du rapport généré [`docs/results/forecast-report.md`](docs/results/forecast-report.md), et le suivi des runs est dans MLflow.
 
 **Test final hors échantillon (W3 : cibles 2025-09 → 2026-08), 781–782 séries :**
 
@@ -54,8 +54,12 @@ Campagne active `training_run.run_id = 3` (données `etl_run_id = 5`). Les chiff
 - **API publique** (`/docs`) : 9 routes en lecture seule (référentiels, séries, historique, prévisions avec intervalle à 80 %, alertes expliquées en français, métriques des modèles, run actif). Connexion PostgreSQL en lecture seule, limitation de débit (HTTP 429), CORS restreint. **p95 de 14 à 108 ms** sur l'entrepôt réel, pour un objectif < 300 ms ([`api-performance.md`](docs/results/api-performance.md)).
 - Exemple réel d'alerte renvoyée par l'API : *« Alerte forte : en décembre 2022, le prix de « Millet » à Djibo (BFA) était de 1 464 XOF/kg, soit 214 % au-dessus du niveau attendu (466 XOF/kg) compte tenu de la tendance de l'année écoulée et de la saison. »*
 
+### Dashboard (Sprint 4)
+
+Interface en français simple, lue uniquement via l'API. Le premier écran montre les alertes des trois derniers mois pour un pays et un produit, puis l'historique du marché choisi, avec **la période de soudure (juin–septembre) dessinée sur chaque graphique** et la prévision à 1, 3 et 6 mois entourée de son intervalle à 80 %. Un onglet « Méthode & qualité » compare les modèles au « dernier prix connu » sur chaque période d'évaluation. Conception documentée dans [`PRODUCT.md`](PRODUCT.md) et [`DESIGN.md`](DESIGN.md).
+
 ### Ce qui sera construit (cibles, non encore mesurées)
-- Dashboard, mise à jour mensuelle automatique et démo publique en HTTPS (Sprint 4).
+- Démo publique en HTTPS sur Oracle Cloud (configuration prête et répétée localement, déploiement à faire : [`docs/deploiement.md`](docs/deploiement.md)).
 
 ---
 
@@ -67,9 +71,11 @@ Campagne active `training_run.run_id = 3` (données `etl_run_id = 5`). Les chiff
 | `agriprix-mlflow` | MLflow 2.22 | 512 Mo | Suivi des expériences, connecté uniquement à `mlflow_db` |
 | `agriprix-api` | FastAPI + SQLAlchemy 2 | 512 Mo | API connectée à l'entrepôt avec un rôle **en lecture seule** |
 | `agriprix-dashboard` | Streamlit | 512 Mo | Interface qui passe **uniquement par l'API** (aucun accès SQL) |
-| `job-runner` | Python (pandas, LightGBM, pytest, ruff) | 1 280 Mo | Conteneur éphémère pour ETL, entraînement, tests et lint |
+| `job-runner` | Python (pandas, LightGBM, pytest, ruff) | 1 280 Mo | Développement : conteneur éphémère pour ETL, entraînement, tests et lint |
+| `agriprix-scheduler` | Python (pandas, LightGBM, MLflow) | 2 Go | Production : mise à jour mensuelle (ETL, puis entraînement si les données ont changé) |
+| `agriprix-caddy` | Caddy 2.10 | 128 Mo | Production : seul point d'entrée public, HTTPS Let's Encrypt automatique |
 
-Les ports ne sont publiés que sur `127.0.0.1`. Les dépendances Python sont figées dans [`requirements.lock`](requirements.lock) et installées telles quelles dans l'image (voir [`ADR-008`](docs/adr/008-image-unique-et-verrouillage-des-dependances.md)).
+En développement, les ports ne sont publiés que sur `127.0.0.1` ; en production, seul Caddy (HTTPS automatique) est exposé. Chaque service a sa propre image, construite à partir d'un sous-ensemble exact de [`requirements.lock`](requirements.lock) : l'image de l'API pèse 459 Mo et celle du dashboard ne contient aucun pilote SQL ([`ADR-008`](docs/adr/008-image-unique-et-verrouillage-des-dependances.md), [`ADR-012`](docs/adr/012-mise-en-production-oracle-duckdns-caddy.md)). Un service `scheduler` relance chaque mois l'ETL, puis l'entraînement si les données ont changé.
 
 ---
 
@@ -104,6 +110,7 @@ docker compose up -d --build --wait
 | Rapport de résultats ML | `make report` | `docker compose --profile jobs run --rm job-runner python -m src.ml.report` |
 | Validation du détecteur (données réelles) | `make validate-anomalies` | `docker compose --profile jobs run --rm job-runner python -m src.anomaly.validation` |
 | Mesure de performance de l'API | `make perf` | `docker compose --profile jobs run --rm job-runner python -m src.api.perf` |
+| Production sur le serveur | `./deploy/deploy.sh up` | `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --wait` |
 | Arrêter (garde les données) | `make down` | `docker compose --profile jobs down` |
 | Tout réinitialiser (efface les volumes) | `make clean` | `docker compose --profile jobs down -v` |
 
@@ -117,8 +124,8 @@ docker compose up -d --build --wait
 | Sprint 0.5 | Remise à niveau du socle (lock des dépendances, CI, santé API) | ✅ terminé |
 | Sprint 1 | ETL HDX/FAOSTAT + contrôle d'intégrité + entrepôt en étoile | ✅ terminé |
 | Sprint 2 | Prévisions 1/3/6 mois + intervalles conformes + MLflow | ✅ terminé |
-| Sprint 3 | Détection d'anomalies validée + API sécurisée | 🔄 en validation |
-| Sprint 4 | Dashboard + mise à jour mensuelle + démo publique HTTPS (fin du MVP) | ⏳ à venir |
+| Sprint 3 | Détection d'anomalies validée + API sécurisée | ✅ terminé |
+| Sprint 4 | Dashboard + mise à jour mensuelle + démo publique HTTPS (fin du MVP) | 🔄 en validation (déploiement serveur à faire) |
 | Sprint 5 | Bonus : Prometheus/Grafana, Kubernetes, Metabase, devises | ⏳ optionnel |
 
 ---
@@ -128,7 +135,7 @@ docker compose up -d --build --wait
 - **Cadrage et sources** : [`00-cadrage`](docs/00-cadrage.md) · [`01-etude-existant`](docs/01-etude-existant.md) · [`02-sources-donnees`](docs/02-sources-donnees.md)
 - **Spécifications** : [`03-cahier-des-charges`](docs/03-cahier-des-charges.md) · [`04-backlog`](docs/04-backlog.md)
 - **Conception** : [`05-conception`](docs/05-conception.md) · diagrammes [`01`](docs/diagrams/01-cas-utilisation.md) [`02`](docs/diagrams/02-processus-bpmn.md) [`03`](docs/diagrams/03-diagramme-classes.md) [`04`](docs/diagrams/04-diagrammes-sequence.md) [`05`](docs/diagrams/05-activite-pipeline.md) [`06`](docs/diagrams/06-modele-donnees.md) [`07`](docs/diagrams/07-architecture-c4.md)
-- **Décisions d'architecture (ADR)** : [`001`](docs/adr/001-surdimensionnement-architecture-devops.md) · [`002`](docs/adr/002-entrepot-postgresql-etoile-multi-grains.md) · [`003`](docs/adr/003-strategie-ml-globale-fenetre-historique-rolling-origin.md) · [`004`](docs/adr/004-intervalles-conformes-erreurs-relatives-par-groupe.md) · [`005`](docs/adr/005-dashboard-streamlit-et-bi-metabase-optionnel.md) · [`006`](docs/adr/006-devises-locales-et-feature-flag-conversion.md) · [`007`](docs/adr/007-hebergement-vps-vs-oracle-arm-et-ci-multi-arch.md) · [`008`](docs/adr/008-image-unique-et-verrouillage-des-dependances.md) · [`009`](docs/adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md) · [`010`](docs/adr/010-protocole-de-prevision-baseline-persistance-et-selection.md) · [`011`](docs/adr/011-detection-anomalies-et-api-publique.md)
+- **Décisions d'architecture (ADR)** : [`001`](docs/adr/001-surdimensionnement-architecture-devops.md) · [`002`](docs/adr/002-entrepot-postgresql-etoile-multi-grains.md) · [`003`](docs/adr/003-strategie-ml-globale-fenetre-historique-rolling-origin.md) · [`004`](docs/adr/004-intervalles-conformes-erreurs-relatives-par-groupe.md) · [`005`](docs/adr/005-dashboard-streamlit-et-bi-metabase-optionnel.md) · [`006`](docs/adr/006-devises-locales-et-feature-flag-conversion.md) · [`007`](docs/adr/007-hebergement-vps-vs-oracle-arm-et-ci-multi-arch.md) · [`008`](docs/adr/008-image-unique-et-verrouillage-des-dependances.md) · [`009`](docs/adr/009-drapeaux-qualite-sources-et-tracabilite-des-versions.md) · [`010`](docs/adr/010-protocole-de-prevision-baseline-persistance-et-selection.md) · [`011`](docs/adr/011-detection-anomalies-et-api-publique.md) · [`012`](docs/adr/012-mise-en-production-oracle-duckdns-caddy.md)
 - **Journal de bord** : [`docs/JOURNAL.md`](docs/JOURNAL.md)
 
 ---

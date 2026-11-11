@@ -1,6 +1,6 @@
 # Validation du détecteur d'anomalies sur les crises historiques
 
-> Rapport **généré** par `python -m src.anomaly.validation` (données ETL `etl_run_id = 5`). Catalogue, seuils et critère fixés *a priori* dans `src/anomaly/catalog.py` (commit `d7bfac9`, publié avant tout calcul sur données réelles). Un épisode manqué est un résultat, jamais un motif de retoucher les seuils.
+> Rapport **généré** par `python -m src.anomaly.validation` (données ETL `etl_run_id = 7`). Catalogue, seuils et critère fixés *a priori* dans `src/anomaly/catalog.py` (commit `d7bfac9`, publié avant tout calcul sur données réelles). Un épisode manqué est un résultat, jamais un motif de retoucher les seuils.
 
 Critère : un couple (pays, produit) est détecté si, pendant l'épisode, au moins **25% de ses marchés** ont un score robuste **z ≥ +2.5** le même mois. Un épisode est détecté si au moins un de ses couples l'est.
 
