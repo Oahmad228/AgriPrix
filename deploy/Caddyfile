@@ -1,0 +1,30 @@
+# Public entry point of AgriPrix Observatory. Caddy obtains and renews the HTTPS
+# certificate (Let's Encrypt) for {$DOMAIN} automatically, and sets X-Forwarded-For to the
+# real visitor address (incoming X-Forwarded-For headers are not trusted), which the API
+# rate limiter uses as its key.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	# Public read-only API and its documentation.
+	@api path /api/* /docs /docs/* /redoc /openapi.json
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	# Everything else: the Streamlit dashboard (websocket included).
+	handle {
+		reverse_proxy dashboard:8501
+	}
+}

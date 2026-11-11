@@ -11,7 +11,7 @@ RUN_JOB := $(COMPOSE) --profile jobs run --rm job-runner
 
 help: ## Show available Makefile targets
 	@echo "AgriPrix Observatory — Available commands:"
-	@echo "  make build   : Build the shared application image (agriprix-app:latest)"
+	@echo "  make build   : Build the per-service images and the dev image"
 	@echo "  make up      : Build and start all MVP services in background (db, mlflow, api, dashboard)"
 	@echo "  make down    : Stop and remove running containers"
 	@echo "  make ps      : Show container status and healthchecks"
@@ -29,8 +29,8 @@ help: ## Show available Makefile targets
 	@echo "  make perf    : Benchmark API latency on the real warehouse (p95 < 300 ms)"
 	@echo "  make clean   : Stop containers and remove volumes (resets database)"
 
-build: ## Build the shared application image used by every Python service
-	$(COMPOSE) build api
+build: ## Build the per-service images (api, dashboard, mlflow) and the dev image
+	$(COMPOSE) --profile jobs build
 
 up: ## Start all MVP services (PostgreSQL, MLflow, FastAPI, Streamlit) and wait for healthchecks
 	$(COMPOSE) up -d --build --wait

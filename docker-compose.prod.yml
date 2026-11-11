@@ -1,0 +1,119 @@
+# =============================================================================
+# Production overrides (public demo). Usage on the server:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --wait
+# Differences with development:
+#   - only Caddy is reachable from the Internet (80/443, automatic HTTPS); every other
+#     port is removed, the API is reached through Caddy which sets X-Forwarded-For;
+#   - no bind mounts of the source tree: services run the code baked into their image;
+#   - every secret must be set in .env (no *_local_dev fallback): compose refuses to start;
+#   - a scheduler runs the monthly refresh (ETL + retraining) inside Docker.
+# =============================================================================
+name: agriprix-observatory
+
+x-required-secrets: &secrets
+  DW_WRITER_USER: ${DW_WRITER_USER:?set DW_WRITER_USER in .env}
+  DW_WRITER_PASSWORD: ${DW_WRITER_PASSWORD:?set DW_WRITER_PASSWORD in .env}
+  DW_READONLY_USER: ${DW_READONLY_USER:?set DW_READONLY_USER in .env}
+  DW_READONLY_PASSWORD: ${DW_READONLY_PASSWORD:?set DW_READONLY_PASSWORD in .env}
+  MLFLOW_DB_USER: ${MLFLOW_DB_USER:?set MLFLOW_DB_USER in .env}
+  MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:?set MLFLOW_DB_PASSWORD in .env}
+
+services:
+  db:
+    ports: !reset []
+    environment:
+      <<: *secrets
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD in .env}
+
+  mlflow:
+    ports: !reset []
+    environment: !reset {}
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://${MLFLOW_DB_USER:?set in .env}:${MLFLOW_DB_PASSWORD:?set in .env}@db:5432/${MLFLOW_DB:-mlflow_db}
+      --default-artifact-root /mlflow/artifacts
+
+  api:
+    ports: !reset []
+    volumes: !reset []
+    environment:
+      APP_ENV: production
+      DW_READONLY_USER: ${DW_READONLY_USER:?set DW_READONLY_USER in .env}
+      DW_READONLY_PASSWORD: ${DW_READONLY_PASSWORD:?set DW_READONLY_PASSWORD in .env}
+      CORS_ORIGINS: https://${DOMAIN:?set DOMAIN in .env}
+
+  dashboard:
+    ports: !reset []
+    volumes: !reset []
+    environment:
+      STREAMLIT_SERVER_RUN_ON_SAVE: "false"
+      STREAMLIT_SERVER_FILE_WATCHER_TYPE: none
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: service
+      args:
+        LOCK: requirements/jobs.lock
+    image: agriprix-jobs:latest
+    container_name: agriprix-scheduler
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      GIT_SHA: ${GIT_SHA:-unknown}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DW_DB: ${DW_DB:-agriprix_dw}
+      DW_WRITER_USER: ${DW_WRITER_USER:?set DW_WRITER_USER in .env}
+      DW_WRITER_PASSWORD: ${DW_WRITER_PASSWORD:?set DW_WRITER_PASSWORD in .env}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      REFRESH_DAY: ${REFRESH_DAY:-20}
+      REFRESH_HOUR: ${REFRESH_HOUR:-3}
+    command: python -m src.ops.scheduler
+    volumes:
+      - raw_data:/app/data
+      - mlflow_artifacts:/mlflow/artifacts
+    mem_limit: 2g
+    cpus: 1.50
+    networks:
+      - agriprix-net
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    container_name: agriprix-caddy
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      dashboard:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 128m
+    networks:
+      - agriprix-net
+
+volumes:
+  raw_data:
+    name: agriprix_raw_data
+  caddy_data:
+    name: agriprix_caddy_data
+  caddy_config:
+    name: agriprix_caddy_config

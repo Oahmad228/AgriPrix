@@ -12,9 +12,18 @@ services:
       POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-agriprix_super_local_dev}
       POSTGRES_DB: postgres
+      # Read by docker/postgres/01-init.sh on the first start (empty volume) only.
+      # The *_local_dev fallbacks are for local development; production sets every value
+      # in .env (docker-compose.prod.yml refuses to start without them).
+      DW_WRITER_USER: ${DW_WRITER_USER:-agriprix_etl_writer}
+      DW_WRITER_PASSWORD: ${DW_WRITER_PASSWORD:-agriprix_writer_local_dev}
+      DW_READONLY_USER: ${DW_READONLY_USER:-agriprix_api_readonly}
+      DW_READONLY_PASSWORD: ${DW_READONLY_PASSWORD:-agriprix_readonly_local_dev}
+      MLFLOW_DB_USER: ${MLFLOW_DB_USER:-mlflow_user}
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/postgres/01-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -32,15 +41,18 @@ services:
   # 2. MLflow Tracking Server (Isolated in mlflow_db via mlflow_user)
   # ---------------------------------------------------------------------------
   mlflow:
-    image: agriprix-app:latest
-    pull_policy: never
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: service
+      args:
+        LOCK: requirements/mlflow.lock
+    image: agriprix-mlflow:latest
     container_name: agriprix-mlflow
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-      api:
-        condition: service_started
     environment:
       MLFLOW_BACKEND_URI: postgresql://${MLFLOW_DB_USER:-mlflow_user}:${MLFLOW_DB_PASSWORD:-agriprix_mlflow_local_dev}@db:5432/${MLFLOW_DB:-mlflow_db}
     command: >
@@ -71,7 +83,10 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: agriprix-app:latest
+      target: service
+      args:
+        LOCK: requirements/api.lock
+    image: agriprix-api:latest
     container_name: agriprix-api
     restart: unless-stopped
     depends_on:
@@ -108,8 +123,13 @@ services:
   # 4. Streamlit Dashboard (Zero SQL driver/credentials — HTTP client of api)
   # ---------------------------------------------------------------------------
   dashboard:
-    image: agriprix-app:latest
-    pull_policy: never
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: service
+      args:
+        LOCK: requirements/dashboard.lock
+    image: agriprix-dashboard:latest
     container_name: agriprix-dashboard
     restart: unless-stopped
     depends_on:
@@ -146,12 +166,18 @@ services:
       - agriprix-net
 
   # ---------------------------------------------------------------------------
-  # 5. Ephemeral Job Runner (ETL, ML Training, Tests, Linters)
+  # 5. Ephemeral Job Runner (ETL, ML Training, Tests, Linters) - development image
   #    Invoked via `make etl`, `make train`, `make test`, `make lint`
   # ---------------------------------------------------------------------------
   job-runner:
-    image: agriprix-app:latest
-    pull_policy: never
+    # Development image: the full lock (tests, lint) on top of everything the jobs need.
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: dev
+      args:
+        LOCK: requirements.lock
+    image: agriprix-dev:latest
     profiles: ["jobs"]
     depends_on:
       db:

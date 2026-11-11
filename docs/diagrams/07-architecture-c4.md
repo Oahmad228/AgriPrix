@@ -131,7 +131,7 @@ flowchart TB
    - Les personnes sont représentées par leur **rôle fonctionnel** (`Analyste`, `Chargée d'Études`, `Développeur / Système Tiers`, `Administrateur Data / MLOps`).
    - Les flèches respectent le sens d'appel réseau : `GitHub Actions` pousse (`docker push`) vers `GHCR`, tandis qu'`AgriPrix Observatory` tire (`docker pull`) les images depuis `GHCR`.
 2. **Sur le Niveau C2 (Conteneurs)** :
-   - Zoomez sur le conteneur `db` : au lieu de mélanger les tables métier de l'entrepôt et les tables internes d'alembic/MLflow dans une seule base, le script d'initialisation `/docker-entrypoint-initdb.d/01-init.sql` crée **deux bases de données distinctes** (`agriprix_dw` et `mlflow_db`) et **trois rôles cloisonnés** (`agriprix_etl_writer`, `agriprix_api_readonly`, `mlflow_user`), tout en mutualisant le même processus `postgres:16-alpine` de `512 Mo` pour économiser la RAM.
+   - Zoomez sur le conteneur `db` : au lieu de mélanger les tables métier de l'entrepôt et les tables internes d'alembic/MLflow dans une seule base, le script d'initialisation `/docker-entrypoint-initdb.d/01-init.sh` (mots de passe lus dans `.env`) crée **deux bases de données distinctes** (`agriprix_dw` et `mlflow_db`) et **trois rôles cloisonnés** (`agriprix_etl_writer`, `agriprix_api_readonly`, `mlflow_user`), tout en mutualisant le même processus `postgres:16-alpine` de `512 Mo` pour économiser la RAM.
 
 ---
 
