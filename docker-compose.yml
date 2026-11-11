@@ -118,12 +118,18 @@ services:
     environment:
       API_BASE_URL: http://api:8000
       PUBLIC_API_DOCS_URL: http://localhost:${API_PORT:-8000}/docs
+      # Development: reload the page when code changes instead of restarting the container
+      # (a restart drops the browser's connection: "Connection error" popup). Polling is
+      # required because file events do not cross the Windows -> Docker bind mount.
+      STREAMLIT_SERVER_RUN_ON_SAVE: ${STREAMLIT_RUN_ON_SAVE:-true}
+      STREAMLIT_SERVER_FILE_WATCHER_TYPE: ${STREAMLIT_FILE_WATCHER:-poll}
+    # Run from the dashboard folder so Streamlit loads .streamlit/config.toml (theme) and
+    # serves ./static (self-hosted fonts).
+    working_dir: /app/src/dashboard
     command: >
-      streamlit run src/dashboard/app.py
+      streamlit run app.py
       --server.address=0.0.0.0
       --server.port=8501
-      --server.headless=true
-      --browser.gatherUsageStats=false
     volumes:
       - ./src:/app/src:ro
     ports:
