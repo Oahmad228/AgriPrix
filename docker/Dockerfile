@@ -44,3 +44,14 @@ USER agriprix
 
 FROM service AS dev
 COPY --chown=agriprix:agriprix tests ./tests
+
+# Research image (docs/research/01-protocole.md section 11): the dev image plus the few
+# research-only packages (raster reading for CHIRPS). Product images are unchanged.
+FROM dev AS research
+USER root
+COPY requirements/research-extra.lock /tmp/research-extra.lock
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefer-binary --default-timeout=180 --retries=10 --no-deps \
+        -r /tmp/research-extra.lock && \
+    pip check
+USER agriprix

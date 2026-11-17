@@ -207,6 +207,41 @@ services:
     networks:
       - agriprix-net
 
+  # ---------------------------------------------------------------------------
+  # 6. Research runner (docs/research/): dev image + research-only packages.
+  #    More CPU and memory for the rolling-origin backtests; never used by the product.
+  # ---------------------------------------------------------------------------
+  research-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: research
+      args:
+        LOCK: requirements.lock
+    image: agriprix-research:latest
+    profiles: ["research"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: research
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DW_DB: ${DW_DB:-agriprix_dw}
+      DW_READONLY_USER: ${DW_READONLY_USER:-agriprix_api_readonly}
+      DW_READONLY_PASSWORD: ${DW_READONLY_PASSWORD:-agriprix_readonly_local_dev}
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./data:/app/data
+      - ./docs:/app/docs
+    mem_limit: 4g
+    cpus: 6
+    networks:
+      - agriprix-net
+
 volumes:
   pgdata:
     name: agriprix_pgdata

@@ -1,0 +1,8 @@
+# Research image only (ADR-013 to come, docs/research/01-protocole.md section 11).
+# Installed with --no-deps on top of the dev image (full requirements.lock), then pip check.
+# Regenerate inside Docker: install the package in the dev image and pin what pip adds.
+affine==3.0.1
+click-plugins==1.1.1.2
+cligj==0.7.2
+rasterio==1.4.4
+pypdf==7.1.0

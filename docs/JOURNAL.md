@@ -534,3 +534,18 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 
 ### 3. Ce que nous avons appris
 - **Être honnête sur l'état des données dans l'enregistrement** : les prix jusqu'en 2026-10 existaient déjà et ont été en partie consultés, et le choix des facteurs a été motivé par W3. L'écrire renforce la crédibilité plutôt que de l'affaiblir.
+
+## Recherche — Collecte des données (en cours)
+**Date** : 2026-11-17 — **Branche** : `research/regime-shift`
+
+### 1. Ce que nous avons fait
+- **Image de recherche** `agriprix-research` (service `research-runner`, profil `research`) : image de développement + `rasterio`, `pypdf` et leurs dépendances, versions figées dans `requirements/research-extra.lock`. Les images du produit ne changent pas.
+- **CHIRPS v3** (`src/research/chirps.py`) : 550 fichiers mensuels (1981-01 → 2026-10) téléchargés poliment, découpés sur la zone des marchés. Un manifeste versionné enregistre pour chaque mois la date de dépôt sur le serveur et la somme SHA-256 du fichier d'origine.
+- **Pluie par marché** (`src/research/rain.py`) : moyenne des pixels dans un disque de 25 km, calculée pour les 349 marchés des 4 pays (tous ont des coordonnées).
+- **GIEWS** (`src/research/giews.py`) : 136 fiches datées (2009 → 2026). Propositions générées, **à valider par Ahmad** : 123 lignes de récolte (une par fiche) et 21 lignes de mesures commerciales, chacune avec la phrase citée, l'URL et la page.
+
+### 2. Ce qui a échoué ou surpris
+- **Archive CHIRPS retraitée** : la plupart des fichiers ont été déposés en novembre 2024, puis à nouveau le 2026-11-02. Nous n'avons donc que les valeurs définitives actuelles, pas celles publiées à l'époque : c'est la limite « pseudo temps réel » prévue au protocole. Le mois 2026-10 a été déposé le 2026-11-13, ce qui confirme la règle « mois m utilisable en m+1 ».
+- **Première extraction GIEWS trop bruitée** : des phrases sur les prix étaient classées comme des récoltes. Réécrite à partir de l'encadré « FOOD SECURITY SNAPSHOT » de chaque fiche.
+- **Trou de données** : aucune estimation GIEWS de la récolte 2025 pour le Burkina Faso et le Sénégal, et très peu de fiches en 2023. Les avis PREGEC devront le combler.
+- Une coquille dans la source (« Sepetmber ») et une phrase « border with Benin remained closed » non détectée : corrigées et couvertes par des tests.
