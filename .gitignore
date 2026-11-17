@@ -62,3 +62,6 @@ HISTORIQUE_CONVERSATION.md
 .claude/skills/
 # Impeccable runtime captures
 .impeccable/review/
+
+# Personal CV notes: kept on the local machine only, never committed
+docs/CV_FACTS.md
