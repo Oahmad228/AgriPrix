@@ -2,7 +2,7 @@ name: AgriPrix CI (Lint, Tests & Image Build)
 
 on:
   push:
-    branches: ["main", "sprint/**", "feat/**"]
+    branches: ["main", "sprint/**", "feat/**", "research/**"]
   pull_request:
     branches: ["main"]
 
