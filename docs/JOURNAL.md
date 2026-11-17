@@ -519,3 +519,18 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 ### 3. Ce que nous avons appris
 - **Une donnée sans date de publication est inutilisable** pour une prévision honnête. GIEWS date chaque fiche (29 fiches pour le Burkina depuis 2009), ce qui en fait une meilleure source que FAOSTAT, publiée un an après.
 - **Les données publiques ont des trous institutionnels** : arrêt d'eMODIS en 2022, pause de FEWS NET début 2025. Ils doivent figurer dans les limites de l'étude.
+
+## Recherche — Protocole pré-enregistré
+**Date** : 2026-11-17 — **Référence** : tag `protocol-v1` (commit `ce2b4f9`)
+
+### 1. Ce que nous avons fait
+- Protocole `docs/research/01-protocole.md` relu par Ahmad, puis commité et poussé **avant tout calcul**. Il fixe la règle de datation, les modèles, les variables de facteurs, les régimes, les métriques, les méthodes d'intervalles et les règles de décision de H1 à H4.
+- Texte d'enregistrement OSF en anglais (`docs/research/osf-registration.md`), prêt à être déposé par Ahmad.
+- Dépôt nettoyé : les 5 branches de sprint, déjà fusionnées, sont remplacées par les tags `sprint-0` à `sprint-4`.
+
+### 2. Pourquoi
+- Un protocole écrit et daté **avant** les résultats empêche d'ajuster les seuils, les fenêtres ou les variables après coup. C'est ce qui distingue une étude confirmatoire d'une exploration.
+- W3 ayant déjà été vu, seule la fenêtre W4 (cibles à partir de 2026-11) peut confirmer les hypothèses.
+
+### 3. Ce que nous avons appris
+- **Être honnête sur l'état des données dans l'enregistrement** : les prix jusqu'en 2026-10 existaient déjà et ont été en partie consultés, et le choix des facteurs a été motivé par W3. L'écrire renforce la crédibilité plutôt que de l'affaiblir.
