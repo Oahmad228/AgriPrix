@@ -3,6 +3,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -34,21 +35,31 @@ class Settings(BaseSettings):
 
     api_base_url: str = "http://api:8000"
 
+    # Empty locally (Docker network). "require" for a managed database such as Neon.
+    postgres_sslmode: str = ""
+
+    def _database_url(self, user: str, password: str) -> str:
+        # URL.create quotes special characters, so generated passwords are always safe.
+        url = URL.create(
+            "postgresql+psycopg",
+            username=user,
+            password=password,
+            host=self.postgres_host,
+            port=self.postgres_port,
+            database=self.dw_db,
+            query={"sslmode": self.postgres_sslmode} if self.postgres_sslmode else {},
+        )
+        return url.render_as_string(hide_password=False)
+
     @property
     def writer_database_url(self) -> str:
         """Return SQLAlchemy URL for the read-write ETL/ML role on agriprix_dw."""
-        return (
-            f"postgresql+psycopg://{self.dw_writer_user}:{self.dw_writer_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.dw_db}"
-        )
+        return self._database_url(self.dw_writer_user, self.dw_writer_password)
 
     @property
     def readonly_database_url(self) -> str:
         """Return SQLAlchemy URL for the read-only API role on agriprix_dw."""
-        return (
-            f"postgresql+psycopg://{self.dw_readonly_user}:{self.dw_readonly_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.dw_db}"
-        )
+        return self._database_url(self.dw_readonly_user, self.dw_readonly_password)
 
     @property
     def cors_origin_list(self) -> list[str]:
