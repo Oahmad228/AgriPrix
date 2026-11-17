@@ -25,6 +25,26 @@ Menu *Compute → Instances → Create instance* :
 - **SSH** : génère une clé sur ton PC dans PowerShell avec `ssh-keygen -t ed25519`, puis colle le contenu de `C:\Users\<toi>\.ssh\id_ed25519.pub`.
 - Une fois la VM créée : *Networking → IP administration*, transforme l'IP publique en **IP réservée** pour qu'elle ne change jamais.
 
+## 2 bis. Si Oracle répond « Out of capacity » : relance automatique
+
+La capacité ARM gratuite est souvent épuisée (cas réel d'Ahmad le 2026-11-15, région Maroc Ouest - Casablanca, qui n'a qu'un seul domaine de disponibilité). Une place se libère quand un autre utilisateur supprime sa machine : il faut donc redemander régulièrement. Les scripts de `deploy/oci/` le font avec l'outil officiel d'Oracle (OCI CLI), **dans Docker**, depuis ton PC.
+
+1. **Clé API** (une paire de clés qui permet à un programme d'agir sur ton compte sans mot de passe). On la génère hors du dépôt, dans `C:\Users\<toi>\.oci\` :
+   ```bash
+   docker run --rm -v "C:/Users/<toi>/.oci:/out" alpine:3.20 sh -c "apk add -q openssl && openssl genrsa -out /out/oci_api_key.pem 2048 && openssl rsa -pubout -in /out/oci_api_key.pem -out /out/oci_api_key_public.pem"
+   ```
+2. Console Oracle → *Mon profil → Tokens and keys → Add API key → Paste a public key* : colle `oci_api_key_public.pem`. Oracle affiche un aperçu de configuration : copie-le dans `C:\Users\<toi>\.oci\config` et ajoute la ligne `key_file=/oracle/.oci/oci_api_key.pem`.
+3. Copie ta clé SSH publique dans `C:\Users\<toi>\.oci\ssh_key.pub`, et les deux scripts `deploy/oci/*.sh` dans ce même dossier.
+4. Crée le réseau (une seule fois ; les ports 22, 80 et 443 y sont déjà ouverts, la section 3.1 devient inutile) :
+   ```bash
+   docker run --rm --user 0 -e OCI_CLI_CONFIG_FILE=/oracle/.oci/config -v "C:/Users/<toi>/.oci:/oracle/.oci" --entrypoint sh ghcr.io/oracle/oci-cli:latest /oracle/.oci/network.sh
+   ```
+5. Lance la relance en arrière-plan (elle redémarre avec Docker et s'arrête seule en cas de succès) :
+   ```bash
+   docker run -d --name agriprix-oci-retry --restart unless-stopped --user 0 -e OCI_CLI_CONFIG_FILE=/oracle/.oci/config -v "C:/Users/<toi>/.oci:/oracle/.oci" --entrypoint sh ghcr.io/oracle/oci-cli:latest /oracle/.oci/retry.sh
+   ```
+6. Suivi : `docker logs --tail 5 agriprix-oci-retry`. Une ligne `SUCCESS` signifie que la VM existe ; ses détails sont dans `.oci\instance.json`. Ensuite, supprime la clé API de ton profil Oracle si tu n'en as plus besoin.
+
 ## 3. Ouvrir les ports 80 et 443 (toi)
 
 Il y a deux pare-feu à ouvrir, et il faut faire les deux :
@@ -81,5 +101,5 @@ chmod +x deploy/deploy.sh
 | Symptôme | Cause probable |
 | :--- | :--- |
 | Le certificat HTTPS n'est pas obtenu | Les ports 80 et 443 ne sont pas ouverts aux deux endroits (section 3), ou DuckDNS ne pointe pas sur l'IP réservée. |
-| `Out of capacity` à la création de la VM | Capacité ARM gratuite épuisée dans la région : réessaie plus tard. |
+| `Out of capacity` à la création de la VM | Capacité ARM gratuite épuisée dans la région : relance automatique (section 2 bis). |
 | Le dashboard affiche « Les prévisions ne sont pas encore calculées » | `./deploy/deploy.sh refresh` n'a pas encore été lancé ou a échoué : consulte `./deploy/deploy.sh logs`. |

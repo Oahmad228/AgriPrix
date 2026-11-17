@@ -495,9 +495,11 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 4. **Fenêtre « Connection error »** signalée par Ahmad : elle venait de mes redémarrages du conteneur pendant les tests (aucun plantage : 0 redémarrage automatique, pas de manque de mémoire). Correction : rechargement à chaud de Streamlit en développement (surveillance des fichiers par sondage, nécessaire à travers le montage Windows).
 5. **Docker Desktop arrêté trois fois** en cours de session (ordinateur mis en veille ou mise à jour), avec des sockets bloqués à chaque redémarrage. Même procédure à chaque fois ; les données n'ont jamais été perdues.
 6. **Un lanceur de skill téléchargeant un binaire** (`impeccable`) : je ne l'ai pas exécuté, et j'ai utilisé la procédure de repli prévue par le skill (lecture directe du contexte, choix soumis à Ahmad via l'outil de question).
-7. **Les propositions de `ui-ux-pro-max`** (fond sombre, accent vert vif, police monospace) correspondaient aux réflexes que `frontend-design` et `impeccable` désignent comme des défauts : je les ai gardées pour les règles d'accessibilité et de graphiques, pas pour la direction visuelle.
+7. **Obtenir un serveur gratuit (2026-11-15)** : Oracle répond `Out of host capacity` à Casablanca (64 tentatives automatiques sans succès en 7 h) ; le passage en paiement à l'usage demandait une autorisation de 93 €, refusée ; Azure Student a expiré ; AWS refuse le plan gratuit au nouveau compte (dossier au support en attente). Réponse : relance automatique dans Docker (`deploy/oci/`), détails dans ADR-012 §5.
+8. **Les propositions de `ui-ux-pro-max`** (fond sombre, accent vert vif, police monospace) correspondaient aux réflexes que `frontend-design` et `impeccable` désignent comme des défauts : je les ai gardées pour les règles d'accessibilité et de graphiques, pas pour la direction visuelle.
 
 ### 5. Ce que nous avons appris
 - **Un texte d'interface est une donnée** : s'il commente des chiffres, il doit être calculé à partir d'eux, sinon il ment dès qu'on change un filtre.
 - **Tester une sécurité en l'attaquant** : la limitation de débit n'est prouvée qu'après avoir tenté de la contourner avec un faux `X-Forwarded-For`.
 - **Une règle d'architecture se garantit mieux par l'image que par la discipline** : sans pilote SQL dans son image, le dashboard ne peut pas contourner l'API.
+- **« Gratuit » n'est pas « disponible »** : une offre gratuite peut être saturée ou refusée ; garder une configuration portable (images ARM et x86, Caddy, `.env`) évite de dépendre d'un seul hébergeur.
