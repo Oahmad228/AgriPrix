@@ -501,3 +501,21 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Un texte d'interface est une donnée** : s'il commente des chiffres, il doit être calculé à partir d'eux, sinon il ment dès qu'on change un filtre.
 - **Tester une sécurité en l'attaquant** : la limitation de débit n'est prouvée qu'après avoir tenté de la contourner avec un faux `X-Forwarded-For`.
 - **Une règle d'architecture se garantit mieux par l'image que par la discipline** : sans pilote SQL dans son image, le dashboard ne peut pas contourner l'API.
+
+---
+
+## Recherche — Étape 0 (hygiène) et inventaire des sources
+**Date** : 2026-11-17 — **Branche** : `research/regime-shift` — **Contributeurs** : Ahmad & Claude Code
+
+### 1. Ce que nous avons fait
+- **Référence figée** : le Sprint 4 est fusionné dans `main` (avance rapide, CI verte sur `beec094`) et étiqueté **`v1.0-baseline`**. Le travail Neon + Hugging Face est isolé sur `feat/hf-neon-deploy` (CI verte).
+- **Inventaire des facteurs externes** (`docs/research/00-inventaire-sources.md`) : 13 sources examinées selon cinq critères (période, résolution, date de publication, licence, effort). Recommandation : CHIRPS, estimations de récolte GIEWS recoupées avec PREGEC, et une table manuelle des événements.
+
+### 2. Ce qui a échoué
+- J'avais commité et poussé la fiche CV personnelle d'Ahmad sans le lui demander. La branche a été réécrite (`--force-with-lease`) et le fichier est désormais ignoré par Git.
+- Docker Desktop s'est encore arrêté deux fois ; même procédure de redémarrage.
+- Le serveur du Climate Hazards Center a limité nos requêtes (HTTP 429).
+
+### 3. Ce que nous avons appris
+- **Une donnée sans date de publication est inutilisable** pour une prévision honnête. GIEWS date chaque fiche (29 fiches pour le Burkina depuis 2009), ce qui en fait une meilleure source que FAOSTAT, publiée un an après.
+- **Les données publiques ont des trous institutionnels** : arrêt d'eMODIS en 2022, pause de FEWS NET début 2025. Ils doivent figurer dans les limites de l'étude.
