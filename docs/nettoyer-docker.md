@@ -1,6 +1,16 @@
 # Nettoyer Docker
 
-Ménage fait le 2026-11-18 : **17 Go libérés** dans Docker (images inutilisées 4,35 Go, cache de construction 12,62 Go). Les commandes ci-dessous sont sûres : elles ne touchent ni aux données (volumes) ni aux images dont AgriPrix a besoin.
+Ménage fait le 2026-11-18 : **18,5 Go libérés** dans Docker. Les commandes ci-dessous sont sûres : elles ne touchent ni aux données (volumes) ni aux images dont AgriPrix a besoin.
+
+| | Avant | Après |
+| --- | --- | --- |
+| Images | 10,43 Go | 4,76 Go |
+| Conteneurs | 0,05 Mo | 0,04 Mo |
+| Volumes | 664,5 Mo | 422,6 Mo |
+| Cache de construction | 12,62 Go | 0 |
+| **Total** | **23,71 Go** | **5,18 Go** |
+
+Supprimés : images `agriprix-app`, `agriprix-jobs`, `agriprix-hf`, `debian`, `caddy`, `alpine`, le conteneur `agriprix-oci-retry` et son image `oci-cli` (option Oracle pas encore choisie), le cache de construction, 3 anciens volumes PostgreSQL sans nom du 11 novembre, `agriprix_raw_data` (remplacé par le dossier `data/`), `agriprix_caddy_config` et `agriprix_caddy_data`. Gardé à part : `n8n_data` (autre projet). Vérifié après : 343 079 observations dans la base, API et tableau de bord en ligne, 238 tests réussis.
 
 ## Ce qu'AgriPrix utilise (à garder)
 
@@ -12,6 +22,7 @@ Ménage fait le 2026-11-18 : **17 Go libérés** dans Docker (images inutilisée
 | volume `agriprix_pgdata` | **la base locale** (343 079 observations) |
 | volume `agriprix_mlflow_artifacts` | runs et modèles MLflow |
 | réseau `agriprix_network` | réseau du compose |
+| volume `n8n_data` | **autre projet (n8n)**, gardé |
 
 ## 1. Voir la place prise (sans rien changer)
 
