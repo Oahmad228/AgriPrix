@@ -83,3 +83,33 @@ def forecast_sentence(forecast: dict, unit: str, target_month: str) -> str:
         f"{fr_number(forecast['yhat'])} {unit}, probablement entre "
         f"{fr_number(forecast['lower_80'])} et {fr_number(forecast['upper_80'])} {unit}."
     )
+
+
+STALE_MONTHS = 6  # a neighbour's last reading older than this is greyed: "relevé ancien"
+QUIET_MONTHS = 12  # no alert for longer than this: say so in "Ce qui s'est passé"
+MONTHS_FR = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+             "septembre", "octobre", "novembre", "décembre")  # fmt: skip
+
+
+def months_between(earlier: str, later: str) -> int:
+    """Whole months from earlier to later (ISO dates, day ignored)."""
+    y1, m1 = int(earlier[:4]), int(earlier[5:7])
+    y2, m2 = int(later[:4]), int(later[5:7])
+    return (y2 - y1) * 12 + (m2 - m1)
+
+
+def is_stale(last_obs_date: str | None, data_until: str, months: int = STALE_MONTHS) -> bool:
+    """True when a market's last reading is more than `months` older than the data date."""
+    return last_obs_date is None or months_between(last_obs_date, data_until) > months
+
+
+def quiet_sentence(
+    last_alert_period: str | None, data_until: str, months: int = QUIET_MONTHS
+) -> str | None:
+    """'Aucune alerte depuis <mois année>.' when the last alert is over `months` old."""
+    if last_alert_period is None:
+        return "Aucune alerte enregistrée pour ce marché."
+    if months_between(last_alert_period, data_until) <= months:
+        return None
+    month = MONTHS_FR[int(last_alert_period[5:7]) - 1]
+    return f"Aucune alerte depuis {month} {last_alert_period[:4]}."

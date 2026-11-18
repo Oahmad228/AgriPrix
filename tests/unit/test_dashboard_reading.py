@@ -107,9 +107,34 @@ def test_charts_and_map_follow_the_dark_mode() -> None:
         [{"period": "2025-01-01", "value": 200.0, "is_observed": True}], [], [], "KG", "XOF",
         "06,07,08,09", theme="dark",
     )  # fmt: skip
-    assert fig.layout.paper_bgcolor == dark["BG"]
+    assert fig.layout.paper_bgcolor == dark["BG_BLOCK"]
     assert fig.data[-1].line.color == dark["INK"]  # observed price line in cream
     mapped = maps.market_map([_point(1, 12.4, -1.5, "UP")], "BFA", theme="dark")
     assert mapped.layout.map.style == "carto-darkmatter"
     assert mapped.data[0].marker.color == dark["ALERT_UP"]
     assert "© CARTO" in maps.attribution("dark") and "CARTO" not in maps.attribution("light")
+
+
+def test_neighbour_reading_older_than_six_months_is_stale() -> None:
+    # Markoye: July 2025 next to prices of September 2026.
+    assert reading.is_stale("2025-07-01", "2026-09-01")
+    assert not reading.is_stale("2026-03-01", "2026-09-01")  # exactly 6 months: still fresh
+    assert reading.is_stale("2026-02-01", "2026-09-01")
+    assert reading.is_stale(None, "2026-09-01")
+
+
+def test_no_alert_since_sentence() -> None:
+    # Dori: last alerts in 2022.
+    assert reading.quiet_sentence("2022-08-01", "2026-09-01") == "Aucune alerte depuis août 2022."
+    assert reading.quiet_sentence("2025-09-01", "2026-09-01") is None  # 12 months: recent
+    assert reading.quiet_sentence("2025-08-01", "2026-09-01") == "Aucune alerte depuis août 2025."
+    assert reading.quiet_sentence(None, "2026-09-01") == "Aucune alerte enregistrée pour ce marché."
+
+
+def test_map_frames_the_country_and_marks_states_clearly() -> None:
+    fig = maps.market_map([_point(1, 12.4, -1.5, "UP"), _point(2, 13.0, -2.0, "NORMAL")], "BFA")
+    west, south, east, north = fig.layout.meta["fit"]
+    assert -6 < west < -5 and 2 < east < 3 and 9 < south < 10 and 15 < north < 16
+    sizes = {t.name: t.marker.size for t in fig.data if t.name}
+    assert sizes["▲ Hausse anormale"] >= 2 * sizes["○ Prix dans la normale"]  # solid and larger
+    assert "aucune prise de position" in maps.BORDERS_NOTE

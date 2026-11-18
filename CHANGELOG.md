@@ -2,6 +2,23 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les dates sont celles de la fusion dans `main`.
 
+## [Non publié] — branche `ux/correctifs-sombre`
+
+### Corrigé
+- Mélange de thèmes (en-tête clair sur fond sombre, onglets illisibles, bouton invisible) : sur Streamlit Community Cloud l'application tourne dans un cadre (`/~/+/`) et le script de thème lisait la page extérieure, donc la mémoire de thème de Streamlit n'était jamais corrigée. Le thème est maintenant décidé à un seul endroit (adresse, puis dernier choix du bouton, puis système), appliqué à Streamlit, à la page, à la carte, aux graphiques et au logo ; le menu ⋮ de thème de Streamlit est masqué.
+- Carte cadrée sur le pays choisi (marge 5 %) à sa taille réelle, sur ordinateur comme sur téléphone.
+- Étiquettes de la carte avec un halo, placées à côté de leur point.
+- Marché normal en anneau gris creux, marché en alerte en point plein deux fois plus gros.
+- Moins d'espace sous l'en-tête.
+
+### Modifié
+- Mode sombre refait à l'identique de la maquette sombre validée (couleurs de `SPEC.md` telles quelles, toutes conformes AA).
+
+### Ajouté
+- Marchés voisins : « relevé ancien » quand le dernier relevé a plus de 6 mois.
+- « Ce qui s'est passé » : « Aucune alerte depuis [mois année] » quand la dernière alerte a plus de 12 mois.
+- Sous la carte : « Les frontières affichées n'impliquent aucune prise de position. »
+
 ## [Non publié] — branche `ux/identite-visuelle` (identité visuelle)
 
 ### Ajouté

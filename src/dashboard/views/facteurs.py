@@ -17,7 +17,7 @@ def render() -> None:
     )
     cols = st.columns(2)
     for i, (label, source) in enumerate(FACTORS):
-        with cols[i % 2], st.container(border=True):
+        with cols[i % 2], st.container(border=True, key=f"card_factor_{i}"):
             st.markdown(
                 f'<p class="ap-factor-label">{label}</p><p class="ap-factor-value">[à intégrer]</p>'
                 f'<p class="ap-factor-source">{source}</p>',

@@ -10,34 +10,55 @@ ROOT = Path(__file__).resolve().parents[2]
 THEMES = sorted(tk.THEMES)
 
 
-@pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("name", tk.TEXT_NAMES)
-@pytest.mark.parametrize("background", ["BG", "BG_SOFT"])
+# In dark mode (SPEC), the selection green is a fill under white text, not a text colour,
+# and the brand rule under the header is decorative (#2B3A32): both are checked elsewhere.
+TEXT = {"light": tk.TEXT_NAMES, "dark": tuple(n for n in tk.TEXT_NAMES if n != "SELECT")}
+GRAPHIC = {"light": tk.GRAPHIC_NAMES, "dark": tuple(n for n in tk.GRAPHIC_NAMES if n != "BRAND")}
+CASES_TEXT = [(t, n, b) for t in THEMES for n in TEXT[t] for b in ("BG", "BG_SOFT", "BG_BLOCK")]
+CASES_GRAPHIC = [
+    (t, n, b) for t in THEMES for n in GRAPHIC[t] for b in ("BG", "BG_SOFT", "BG_BLOCK")
+]
+
+
+@pytest.mark.parametrize(("theme", "name", "background"), CASES_TEXT)
 def test_text_tokens_reach_aa(theme: str, name: str, background: str) -> None:
     c = tk.palette(theme)
     ratio = tk.contrast(c[name], c[background])
     assert ratio >= 4.5, f"{theme} : {name} sur {background} : {ratio:.2f}:1 < 4,5:1"
 
 
-@pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("name", tk.GRAPHIC_NAMES)
-@pytest.mark.parametrize("background", ["BG", "BG_SOFT"])
+@pytest.mark.parametrize(("theme", "name", "background"), CASES_GRAPHIC)
 def test_graphic_tokens_reach_3_to_1(theme: str, name: str, background: str) -> None:
     c = tk.palette(theme)
     ratio = tk.contrast(c[name], c[background])
     assert ratio >= 3.0, f"{theme} : {name} sur {background} : {ratio:.2f}:1 < 3:1"
 
 
+def test_dark_tokens_are_the_spec_values() -> None:
+    """Mode sombre of SPEC.md, as given (no contrast adjustment was needed)."""
+    spec = {"BG": "#111A16", "BG_BLOCK": "#18231E", "BG_SOFT": "#1E2B25",
+            "HEADER_BG": "#16211C", "HEADER_RULE": "#2B3A32", "INK": "#E6EDE9",
+            "TEXT_MUTED": "#AEBAB3", "AXIS": "#9AA79F", "BORDER": "#33423A", "GRID": "#27342D",
+            "SELECT": "#2E7D62", "SELECT_BORDER": "#3F8F70", "TAB_ACTIVE_BG": "#E9C46A",
+            "TAB_ACTIVE_TEXT": "#1E2B24", "SEASON": "#E9C46A", "SEASON_OPACITY": 0.13,
+            "FORECAST": "#62AEDB", "LINK": "#86C6EC", "LINK_HOVER": "#B3DCF3",
+            "ALERT_UP": "#F0837B", "ALERT_DOWN": "#A9B6C9"}  # fmt: skip
+    assert {k: tk.DARK[k] for k in spec} == spec
+
+
 @pytest.mark.parametrize("theme", THEMES)
 def test_text_on_selection_and_season_tag(theme: str) -> None:
     c = tk.palette(theme)
     assert tk.contrast(c["SELECT_TEXT"], c["SELECT"]) >= 4.5
-    assert tk.contrast(c["INK"], c["SEASON_TAG_BG"]) >= 4.5
+    assert tk.contrast(c["SEASON_TAG_TEXT"], c["SEASON_TAG_BG"]) >= 4.5
+    if c["TAB_ACTIVE_BG"]:
+        assert tk.contrast(c["TAB_ACTIVE_TEXT"], c["TAB_ACTIVE_BG"]) >= 4.5
 
 
 def test_both_modes_define_every_role() -> None:
     assert set(tk.LIGHT) == set(tk.DARK) == set(tk.ROLE_NAMES)
     assert tk.palette("dark")["MAP_STYLE"] == "carto-darkmatter"
+    assert tk.LIGHT["TAB_ACTIVE_BG"] == ""  # the light theme keeps Streamlit's active tab
     assert tk.palette("nonsense") is tk.LIGHT
 
 
@@ -77,9 +98,10 @@ def test_streamlit_theme_mirrors_the_tokens(config: str, theme: str) -> None:
     assert section["borderColor"] == c["BORDER"]
 
 
-def test_page_styles_carry_both_modes() -> None:
+def test_page_styles_use_one_palette() -> None:
     from src.dashboard.common import css
 
-    styles = css()
-    assert tk.LIGHT["BG_SOFT"] in styles and tk.DARK["BG_SOFT"] in styles
-    assert "@media (prefers-color-scheme: dark)" in styles
+    dark, light = css("dark"), css("light")
+    assert tk.DARK["BG_BLOCK"] in dark and tk.LIGHT["BG_SOFT"] not in dark
+    assert "prefers-color-scheme" not in dark + light  # the theme is decided once, not by CSS
+    assert 'stMainMenu"] {{' not in dark and "stMainMenu" in dark  # Streamlit's theme menu hidden

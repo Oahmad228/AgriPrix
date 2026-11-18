@@ -107,7 +107,7 @@ def side_panel(chosen: dict | None, forecasts: list[dict], selected: dict, horiz
 def price_block(
     view: View, country: dict, selected: dict, hist: dict, forecasts: list[dict]
 ) -> tuple[int, str]:
-    with st.container(border=True, key="price_card"):
+    with st.container(border=True, key="card_price"):
         head, h_col, p_col = st.columns([2, 2, 2], vertical_alignment="center")
         head.markdown("#### Prix et prévision")
         horizon = view.horizon if not forecasts else h_col.segmented_control(
@@ -172,7 +172,10 @@ def context_blocks(country: dict, selected: dict) -> None:
         history = sorted(client.anomalies(series_id=selected["series_id"])["items"],
                          key=lambda a: a["period"], reverse=True)[:3]  # fmt: skip
         unit = charts.unit_label(selected["unit_measure"], selected["currency_code"])
-        html = "".join(
+        quiet = reading.quiet_sentence(history[0]["period"] if history else None,
+                                       country["max_observed_date"])  # fmt: skip
+        html = f'<p class="ap-lead">{quiet}</p>' if quiet else ""
+        html += "".join(
             f'<p class="ap-event"><small>{month(a["period"])}</small><br>Alerte AgriPrix : prix '
             f"{abs(a['deviation_pct']):.0f} % {'au-dessus du' if a['deviation_pct'] > 0 else 'sous le'}"
             f" niveau habituel de la saison ({price(a['observed_value'], unit)}).<br>"
@@ -184,7 +187,7 @@ def context_blocks(country: dict, selected: dict) -> None:
         st.markdown(html, unsafe_allow_html=True)
 
 
-def neighbours_block(view: View, selected: dict) -> None:
+def neighbours_block(view: View, country: dict, selected: dict) -> None:
     near = nearest_markets(selected)
     if not near:
         return
@@ -194,10 +197,14 @@ def neighbours_block(view: View, selected: dict) -> None:
     cols = st.columns(len(near))
     for col, s in zip(cols, near, strict=True):
         unit = charts.unit_label(s["unit_measure"], s["currency_code"])
-        with col, st.container(border=True):
+        # A reading over 6 months older than the data date is greyed and labelled.
+        stale = reading.is_stale(s["last_obs_date"], country["max_observed_date"])
+        key = f"card_near_{'stale_' if stale else ''}{s['series_id']}"
+        with col, st.container(border=True, key=key):
+            old = ' · <span class="ap-old">relevé ancien</span>' if stale else ""
             st.markdown(
                 f"**{s['market_name']}**<br>{price(s['last_value'], unit)}<br>"
-                f'<span class="ap-note">{month(s["last_obs_date"])} · à {s["km"]:.0f} km</span>',
+                f'<span class="ap-note">{month(s["last_obs_date"])}{old} · à {s["km"]:.0f} km</span>',
                 unsafe_allow_html=True,
             )
             target = View(view.country, view.group, s["series_id"], view.horizon, view.period)
@@ -233,7 +240,7 @@ def render() -> None:
         share(View(view.country, view.group, view.series_id, horizon, period))
         st.rerun()
     context_blocks(country, selected)
-    neighbours_block(view, selected)
+    neighbours_block(view, country, selected)
     share(View(view.country, view.group, view.series_id, horizon, period))
     footer()
 

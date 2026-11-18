@@ -193,8 +193,8 @@ def price_figure(
     fig.update_layout(
         height=440 if two_lines else 420,
         margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        paper_bgcolor=c["BG"],
-        plot_bgcolor=c["BG"],
+        paper_bgcolor=c["BG_BLOCK"],
+        plot_bgcolor=c["BG_BLOCK"],
         font={"family": FONT, "color": c["INK"], "size": 13},
         separators=", ",
         hovermode="closest",
@@ -223,7 +223,7 @@ def gain_figure(rows: list[dict], theme: str | None = None) -> go.Figure:
              "SeasonalNaive": "Même mois l'an passé"}  # fmt: skip
     colours = {
         "LightGBM_Global": c["FORECAST"],
-        "Ridge_Seasonal": c["BRAND"],
+        "Ridge_Seasonal": c["TAB_ACTIVE_BG"] or c["BRAND"],
         "SeasonalNaive": c["AXIS"],
     }
     fig = go.Figure()
@@ -239,7 +239,7 @@ def gain_figure(rows: list[dict], theme: str | None = None) -> go.Figure:
     fig.add_hline(y=0, line={"color": c["INK"], "width": 1})
     fig.update_layout(
         barmode="group", height=340, margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        paper_bgcolor=c["BG"], plot_bgcolor=c["BG"], separators=", ",
+        paper_bgcolor=c["BG_BLOCK"], plot_bgcolor=c["BG_BLOCK"], separators=", ",
         font={"family": FONT, "color": c["INK"], "size": 13},
         legend={"orientation": "h", "yanchor": "top", "y": -0.12, "x": 0},
         yaxis={"title": {"text": "écart d'erreur vs « dernier prix connu » (%)", "font": {"size": 12}},

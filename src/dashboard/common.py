@@ -249,23 +249,37 @@ def filter_bar(*, with_market: bool) -> tuple[View, list[dict], list[dict]]:
 
 
 THEME_PARAM = {"sombre": "dark", "clair": "light"}
+THEME_COOKIE = "agriprix_theme"
 
 
 def forced_theme() -> str | None:
-    """Mode chosen with the light/dark button (?theme=sombre|clair), None = follow the system."""
+    """Mode written in the URL (?theme=sombre|clair), else None."""
     return THEME_PARAM.get(param("theme") or "")
 
 
+def decide_theme(url_value: str | None, cookie: str | None, streamlit_kind: str | None) -> str:
+    """The ONE theme of the page, "dark" or "light" (pure: tested in test_dashboard.py).
+
+    Order: 1. ?theme=sombre|clair in the URL; 2. the cookie THEME_SCRIPT writes in the
+    browser, which already holds the last button choice or else the system setting;
+    3. Streamlit's own guess, only before the first visit's cookie exists (the script then
+    reloads the page once if the guess was wrong).
+    """
+    if url_value in THEME_PARAM:
+        return THEME_PARAM[url_value]
+    if cookie in ("dark", "light"):
+        return cookie
+    return "dark" if streamlit_kind == "dark" else "light"
+
+
 def current_theme() -> str:
-    """ "dark" or "light": the URL's choice, else the mode Streamlit applies (the system's)."""
-    forced = forced_theme()
-    if forced:
-        return forced
+    """decide_theme() for this page; read by the CSS, map, charts and logo alike."""
     try:
+        cookie = st.context.cookies.get(THEME_COOKIE)
         kind = st.context.theme.type
     except Exception:  # noqa: BLE001 - outside a session (tests, scripts)
-        kind = None
-    return "dark" if kind == "dark" else "light"
+        cookie, kind = None, None
+    return decide_theme(param("theme"), cookie, kind)
 
 
 def recent_since(country: dict) -> str:
@@ -423,14 +437,23 @@ def _rules(c: dict) -> str:
   [data-testid="stDataFrame"], [data-testid="stTable"], .ap-num {{ font-variant-numeric: tabular-nums; }}
   ::selection {{ background: {c["SEASON_TAG_BG"]}; color: {c["INK"]}; }}
   :focus-visible {{ outline: 2px solid {c["FORECAST"]} !important; outline-offset: 2px; }}
-  /* Light header with a thin rust rule (brand accent, never an alert). */
-  [data-testid="stMainBlockContainer"], .block-container {{ padding-top: 4.2rem; }}
+  /* Header with a thin rule; less empty space between the header and the page title. */
+  [data-testid="stMainBlockContainer"], .block-container {{ padding-top: 2.6rem; }}
+  /* One theme source: Streamlit's own theme menu (⋮) is hidden so it cannot mix themes. */
+  [data-testid="stMainMenu"] {{ display: none !important; }}
   [data-testid="stHeaderLogo"], img[data-testid="stLogo"] {{ height: 2.75rem; max-height: 2.75rem; }}
   /* Light/dark button pinned in the header band (Streamlit has no widget slot there). */
-  .st-key-theme_toggle {{ position: fixed; top: .55rem; right: 3.4rem; z-index: 1000001;
+  .st-key-theme_toggle {{ position: fixed; top: .55rem; right: 1rem; z-index: 1000001;
                           width: auto; }}
   .st-key-theme_toggle button {{ min-height: 44px; border-radius: 999px; padding: 0 .9rem; }}
-  header[data-testid="stHeader"] {{ background: {c["BG"]}; border-bottom: 2px solid {c["BRAND"]}; }}
+  header[data-testid="stHeader"] {{ background: {c["HEADER_BG"]}; border-bottom: 2px solid {c["HEADER_RULE"]}; }}
+  /* Framed blocks (containers keyed "card_*") on the block background. */
+  [class*="st-key-card"] {{ background: {c["BG_BLOCK"]}; }}
+  /* Neighbour whose last reading is old: greyed, with the words "relevé ancien". */
+  [class*="st-key-card_near_stale"] {{ background: {c["BG_SOFT"]}; color: {c["TEXT_MUTED"]}; }}
+  .ap-old {{ border: 1px solid {c["BORDER"]}; border-radius: 4px; padding: 0 .35rem;
+             color: {c["TEXT_MUTED"]}; font-size: .8rem; }}
+  a {{ color: {c["LINK"]}; }} a:hover {{ color: {c["LINK_HOVER"]}; }}
   /* Blocks: 8 px radius, 1 px border, no shadow. */
   div[data-testid="stVerticalBlock"].st-emotion-cache-0, .stVerticalBlock[class*="border"] {{ border-radius: 8px; }}
   [data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 8px; box-shadow: none; }}
@@ -447,9 +470,9 @@ def _rules(c: dict) -> str:
   .ap-note {{ color: {c["TEXT_MUTED"]}; font-size: .92rem; max-width: 78ch; }}
   .ap-sub {{ color: {c["TEXT_MUTED"]}; font-size: 1rem; margin-top: -.6rem; }}
   .ap-tag {{ display: inline-block; padding: 0 .45rem; border-radius: 4px; background: {c["SEASON_TAG_BG"]};
-             color: {c["INK"]}; font-size: .85rem; }}
+             color: {c["SEASON_TAG_TEXT"]}; font-size: .85rem; }}
   .ap-badge {{ display: inline-block; padding: .15rem .6rem; border: 1px solid {c["BORDER"]};
-               border-radius: 999px; font-size: .9rem; white-space: nowrap; background: {c["BG"]}; }}
+               border-radius: 999px; font-size: .9rem; white-space: nowrap; background: {c["BG_BLOCK"]}; }}
   .ap-bias {{ color: {c["TEXT_MUTED"]}; font-size: .92rem; }}
   .ap-alert-head {{ display: flex; justify-content: space-between; gap: .5rem; font-weight: 600;
                     font-size: 1.02rem; margin: 0; }}
@@ -474,57 +497,138 @@ def _rules(c: dict) -> str:
   a.ap-link {{ display: inline-flex; align-items: center; min-height: 44px; font-weight: 600;
                text-decoration: none; }}
   a.ap-link:hover {{ text-decoration: underline; }}
+""" + _dark_only(c)
+
+
+def _dark_only(c: dict) -> str:
+    """Rules of the dark mockup that the light theme does not have (it keeps Streamlit's)."""
+    if not c["TAB_ACTIVE_BG"]:
+        return ""
+    return f"""
+  /* Active tab: straw with dark text; other tabs in ink. */
+  a[data-testid="stTopNavLink"] span {{ color: {c["INK"]}; }}
+  a[data-testid="stTopNavLink"][aria-current="page"] {{ background: {c["TAB_ACTIVE_BG"]}; border-radius: 6px; }}
+  a[data-testid="stTopNavLink"][aria-current="page"] span {{ color: {c["TAB_ACTIVE_TEXT"]}; }}
+  /* Selected pill: filled green, white text, lighter green edge. */
+  [data-testid="stButtonGroup"] button[aria-checked="true"] {{
+      background: {c["SELECT"]} !important; border-color: {c["SELECT_BORDER"]} !important; }}
+  [data-testid="stButtonGroup"] button[aria-checked="true"],
+  [data-testid="stButtonGroup"] button[aria-checked="true"] * {{ color: {c["SELECT_TEXT"]} !important; }}
 """
 
 
-def css(forced: str | None = None) -> str:
-    """Page styles. forced = "light" or "dark" when the visitor chose a mode with the button;
-    otherwise both palettes are written and the browser picks the system's one, which is
-    also the mode Streamlit follows, so a change of system mode applies at once."""
-    if forced in tk.THEMES:
-        return f"<style>{_rules(tk.palette(forced))}</style>"
-    return (
-        f"<style>{_rules(tk.palette('light'))}\n"
-        f"@media (prefers-color-scheme: dark) {{{_rules(tk.palette('dark'))}}}</style>"
-    )
+def css(theme: str | None = None) -> str:
+    """Page styles in the colours of the page's theme (current_theme)."""
+    return f"<style>{_rules(tk.palette(theme))}</style>"
 
 
-# Streamlit keeps the visitor's mode in localStorage, one key per page path
-# ("stActiveTheme-<path>-v2" = "Light" | "Dark" | "System", Streamlit 1.67). The script below
-# writes the URL's choice there for every page and reloads once; without a choice it clears
-# the keys (follow the system) and reloads when the system mode changes, because the map,
-# charts and logo are drawn on the server in the current mode.
+# Streamlit keeps its theme in localStorage, one key per page path of the app document
+# ("stActiveTheme-<path>-v2" = "Light" | "Dark" | "System", Streamlit 1.67). On Streamlit
+# Community Cloud the app runs in an iframe at "/~/+/": the script works on its own
+# document (window), never on window.parent, whose path is the outer page's.
 PAGE_PATHS = ("", "marches", "facteurs", "fiabilite", "donnees")
 THEME_SCRIPT = """<script>
 (() => {
-  const w = window.parent || window;
-  const wanted = "__WANTED__";  // written by the server: the script changes with the mode
-  const parts = w.location.pathname.split("/");
+  const server = "__SERVER__";  // theme this page was drawn in
+  const url = new URL(window.location.href);
+  const fromUrl = {sombre: "dark", clair: "light"}[url.searchParams.get("theme")];
+  const store = window.localStorage;
+  if (fromUrl) store.setItem("agriprix-theme-choice", fromUrl);
+  const chosen = fromUrl || store.getItem("agriprix-theme-choice");
+  const system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  const theme = chosen === "dark" || chosen === "light" ? chosen : system;
+  // Same theme for Streamlit on every page (never "System", which could diverge).
+  const pages = __PAGES__;
+  const parts = window.location.pathname.split("/");
   const last = parts[parts.length - 1];
-  const base = (__PAGES__.includes(last) ? parts.slice(0, -1) : parts).join("/");
-  const key = (page) => `stActiveTheme-${base}/${page}-v2`;
-  const current = JSON.parse(w.localStorage.getItem(key(last)) || '"System"');
-  if (current !== wanted) {
-    for (const page of __PAGES__) {
-      if (wanted === "System") w.localStorage.removeItem(key(page));
-      else w.localStorage.setItem(key(page), JSON.stringify(wanted));
-    }
-    w.location.reload();
-    return;
+  const base = (pages.includes(last) ? parts.slice(0, -1) : parts).join("/");
+  const wantedSt = JSON.stringify(theme === "dark" ? "Dark" : "Light");
+  let stale = false;
+  for (const page of pages) {
+    const key = `stActiveTheme-${base}/${page}-v2`;
+    if (page === last && store.getItem(key) !== wantedSt) stale = true;
+    store.setItem(key, wantedSt);
   }
-  if (wanted === "System" && !w.__agriprixThemeWatch) {
-    w.__agriprixThemeWatch = true;
-    w.matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", () => w.location.reload());
+  document.cookie = `__COOKIE__=${theme}; path=/; max-age=31536000; SameSite=Lax`;
+  if (stale || server !== theme) {
+    // Reload once to apply it everywhere; never loop (at most 2 reloads in 20 s).
+    const now = Date.now();
+    const recent = JSON.parse(sessionStorage.getItem("agriprix-reloads") || "[]")
+      .filter((t) => now - t < 20000);
+    if (recent.length < 2) {
+      sessionStorage.setItem("agriprix-reloads", JSON.stringify([...recent, now]));
+      window.location.reload();
+      return;
+    }
+  }
+  if (!chosen && !window.__agriprixThemeWatch) {
+    window.__agriprixThemeWatch = true;
+    window.matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", () => window.location.reload());
   }
 })();
-</script>""".replace("__PAGES__", json.dumps(PAGE_PATHS))
+</script>""".replace("__PAGES__", json.dumps(PAGE_PATHS)).replace("__COOKIE__", THEME_COOKIE)
 
 
-def theme_script(forced: str | None) -> str:
-    """THEME_SCRIPT for the mode chosen in the URL ("light", "dark", or None = system)."""
-    wanted = {"dark": "Dark", "light": "Light"}.get(forced or "", "System")
-    return THEME_SCRIPT.replace("__WANTED__", wanted)
+def theme_script(server_theme: str) -> str:
+    """THEME_SCRIPT for a page drawn in server_theme ("light" or "dark")."""
+    return THEME_SCRIPT.replace("__SERVER__", server_theme)
 
 
-CSS = css()  # light styles, kept for imports
+# Map framing and labels, applied in the browser to every Plotly map of the page:
+# - fit the map to layout.meta.fit with a 5 % margin at its real size (Plotly cannot: the
+#   pixel width differs between a computer and a phone), again when the country or the
+#   width changes, never while the visitor pans;
+# - labels get a halo in the block colour and move to a free side of their point instead
+#   of being written over the other markets (MapLibre variable anchors and collisions).
+MAP_SCRIPT = """<script>
+(() => {
+  if (window.__agriprixMaps) return;
+  window.__agriprixMaps = true;
+  const setLayout = (map, id, key, value) => {
+    if (JSON.stringify(map.getLayoutProperty(id, key)) !== JSON.stringify(value))
+      map.setLayoutProperty(id, key, value);
+  };
+  const apply = () => {
+    document.querySelectorAll(".js-plotly-plot").forEach((gd) => {
+      const full = gd._fullLayout;
+      const meta = (gd.layout || {}).meta || {};
+      if (!full || !full.map || !full.map._subplot || !meta.fit) return;
+      const map = full.map._subplot.map;
+      if (!map || !map.isStyleLoaded()) return;
+      const signature = JSON.stringify(meta.fit) + ":" + gd.clientWidth;
+      if (gd.__agriprixFit !== signature) {
+        // New country or new width: compute the camera that fills the map (5 % margin).
+        gd.__agriprixFit = signature;
+        gd.__agriprixMoved = false;
+        const pad = Math.round(Math.min(gd.clientWidth, gd.clientHeight) * 0.05);
+        const [w, s, e, n] = meta.fit;
+        gd.__agriprixCamera = map.cameraForBounds([[w, s], [e, n]], {padding: pad});
+        if (!gd.__agriprixWatch) {
+          gd.__agriprixWatch = true;
+          map.on("movestart", (event) => { if (event.originalEvent) gd.__agriprixMoved = true; });
+        }
+      }
+      // Plotly may redraw its first view: keep the fitted one until the visitor moves the map.
+      const camera = gd.__agriprixCamera;
+      if (camera && !gd.__agriprixMoved && Math.abs(map.getZoom() - camera.zoom) > 0.01) {
+        map.jumpTo({center: camera.center, zoom: camera.zoom});
+      }
+      for (const layer of map.getStyle().layers) {
+        if (layer.type !== "symbol" || !layer.id.startsWith("plotly-trace-layer")) continue;
+        if (map.getPaintProperty(layer.id, "text-halo-color") !== meta.halo) {
+          map.setPaintProperty(layer.id, "text-halo-color", meta.halo);
+          map.setPaintProperty(layer.id, "text-halo-width", 2.2);
+        }
+        setLayout(map, layer.id, "text-variable-anchor", ["left", "right", "top", "bottom"]);
+        setLayout(map, layer.id, "text-radial-offset", 1.2);
+        setLayout(map, layer.id, "text-justify", "auto");
+        setLayout(map, layer.id, "text-allow-overlap", false);
+      }
+    });
+  };
+  setInterval(apply, 600);
+})();
+</script>"""
+
+CSS = css("light")  # kept for imports

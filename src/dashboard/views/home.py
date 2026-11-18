@@ -58,7 +58,7 @@ def map_block(view: View, selected: list[dict], names: dict[str, str], alerts: d
         missing += m
     product = GROUP_FR.get(view.group, view.group).lower()
     where = names[view.country] if view.country else "pays suivis"
-    with st.container(border=True, key="map_card"):
+    with st.container(border=True, key="card_map"):
         st.markdown(f"#### Carte des marchés · {product}, {where}")
         key = f"map_{view.country}_{view.group}"
         event = st.plotly_chart(
@@ -89,13 +89,13 @@ def map_block(view: View, selected: list[dict], names: dict[str, str], alerts: d
             note += " Côte d'Ivoire : consultation seule, pas de prévision (valeurs agrégées WFP)."
         if any(c["country_iso3"] == "MAR" for c in selected):
             note += " Maroc : pas de marchés, un indice national FAOSTAT des prix alimentaires."
-        st.markdown(f'<p class="ap-note">{note}<br>{maps.attribution(current_theme())}.</p>',
+        st.markdown(f'<p class="ap-note">{note}<br>{maps.attribution(current_theme())}.<br>{maps.BORDERS_NOTE}</p>',
                     unsafe_allow_html=True)  # fmt: skip
 
 
 def alerts_block(view: View, alerts: dict) -> None:
     ordered = sorted(alerts.values(), key=lambda a: abs(a["deviation_pct"]), reverse=True)
-    with st.container(border=True, key="alerts_card"):
+    with st.container(border=True, key="card_alerts"):
         st.markdown(f"#### {len(ordered)} alerte{'s' if len(ordered) > 1 else ''} ce trimestre")
         st.markdown(
             '<p class="ap-note">Un prix est en alerte quand il s\'éloigne nettement de son niveau '
@@ -144,8 +144,8 @@ def factors_block() -> None:
         unsafe_allow_html=True,
     )
     cols = st.columns(4)
-    for col, (label, source) in zip(cols, FACTORS, strict=True):
-        with col, st.container(border=True):
+    for i, (col, (label, source)) in enumerate(zip(cols, FACTORS, strict=True)):
+        with col, st.container(border=True, key=f"card_factor_{i}"):
             st.markdown(
                 f'<p class="ap-factor-label">{label}</p><p class="ap-factor-value">[à intégrer]</p>'
                 f'<p class="ap-factor-source">{source}</p>',

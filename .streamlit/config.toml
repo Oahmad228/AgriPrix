@@ -31,14 +31,14 @@ dataframeBorderColor = "#ECEAE3"    # GRID
 chartCategoricalColors = ["#21254A", "#1E5066", "#B3261E", "#97570D", "#4A5568"]
 
 [theme.dark]
-primaryColor = "#8CC152"            # SELECT: light leaf green
-backgroundColor = "#13162B"         # BG: iris navy at night
-secondaryBackgroundColor = "#1C2040"  # BG_SOFT
-textColor = "#F3EFE6"               # INK: cream
-linkColor = "#8DD3CF"               # LINK: light iris teal
-borderColor = "#353A60"             # BORDER
-dataframeBorderColor = "#262A49"    # GRID
-chartCategoricalColors = ["#F3EFE6", "#6CC3BF", "#FF7B72", "#E39A3B", "#9DAACB"]
+primaryColor = "#2E7D62"            # SELECT (SPEC dark): selection
+backgroundColor = "#111A16"         # BG: page background
+secondaryBackgroundColor = "#1E2B25"  # BG_SOFT
+textColor = "#E6EDE9"               # INK
+linkColor = "#86C6EC"               # LINK
+borderColor = "#33423A"             # BORDER
+dataframeBorderColor = "#27342D"    # GRID
+chartCategoricalColors = ["#E6EDE9", "#62AEDB", "#F0837B", "#E9C46A", "#A9B6C9"]
 
 [[theme.fontFaces]]
 family = "Public Sans"
