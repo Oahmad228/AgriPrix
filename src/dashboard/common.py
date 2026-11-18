@@ -655,7 +655,16 @@ MAP_SCRIPT = """<script>
       }
     });
   };
-  setInterval(apply, 600);
+  // Theme button: just left of Streamlit Cloud's own toolbar (Share...) when it is there.
+  const placeButton = () => {
+    const button = document.querySelector(".st-key-theme_toggle");
+    const toolbar = document.querySelector('[data-testid="stToolbarActions"]');
+    if (!button) return;
+    const width = toolbar ? toolbar.getBoundingClientRect().width : 0;
+    const right = width ? `${Math.round(window.innerWidth - toolbar.getBoundingClientRect().left + 8)}px` : "1rem";
+    if (button.style.right !== right) button.style.right = right;
+  };
+  setInterval(() => { apply(); placeButton(); }, 600);
 })();
 </script>"""
 
