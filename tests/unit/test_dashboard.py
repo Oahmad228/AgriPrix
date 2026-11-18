@@ -239,3 +239,22 @@ def test_cached_answers_are_keyed_on_the_published_run(monkeypatch) -> None:
     assert calls == ["/api/v1/countries"]
     client.countries()  # new run published: fetched again at once
     assert calls == ["/api/v1/countries", "/api/v1/countries"]
+
+
+def test_dark_mode_chosen_in_the_url_is_kept(monkeypatch) -> None:
+    page = _page(monkeypatch, theme="sombre")
+    assert not page.exception
+    assert _param(page, "theme") == "sombre"  # survives the URL rewrite of the view
+    assert [b.label for b in page.button if b.key == "theme_btn"] == ["Mode clair"]
+    styles = " ".join(m.value for m in page.markdown)
+    assert "#13162B" in styles and "prefers-color-scheme" not in styles  # forced: one palette
+    page.button(key="theme_btn").click().run()
+    assert _param(page, "theme") == "clair"
+
+
+def test_system_mode_by_default(monkeypatch) -> None:
+    page = _page(monkeypatch)
+    assert "theme" not in page.query_params
+    assert [b.label for b in page.button if b.key == "theme_btn"] == ["Mode sombre"]
+    styles = " ".join(m.value for m in page.markdown)
+    assert "@media (prefers-color-scheme: dark)" in styles  # both palettes, system decides

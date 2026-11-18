@@ -101,6 +101,27 @@ Fond `#FFFFFF`, fond doux crème `#F6F4EE`, bordures `#D9D6CC`, grilles `#ECEAE3
 - **La fiabilité en mots** : « ● Fiabilité correcte » (≥ 70 %), « ◐ moyenne » (50-69 %), « ○ faible » (< 50 %), toujours suivie de « la fourchette a été juste N fois sur 100 en test ». Un biais médian récent de 10 % ou plus ajoute une phrase sous la prévision ; la prévision servie n'est jamais corrigée.
 - **Contraste vérifié par test** : WCAG AA, 4,5:1 pour le texte et 3:1 pour les éléments graphiques, sur blanc et sur fond doux.
 
+## Dark mode
+
+Le site suit le mode du système (`prefers-color-scheme`) ; le bouton « Mode sombre » / « Mode clair » de l'en-tête force un mode et l'écrit dans l'adresse (`&theme=sombre` ou `&theme=clair`), qui suit tous les liens. Mêmes contenus et mise en page, seules les couleurs changent. Les jetons sombres de la SPEC (base verte) sont harmonisés avec le logo, comme la SPEC le prévoit :
+
+| Rôle | Clair | Sombre | Contraste sombre (fond / fond doux) |
+| --- | --- | --- | --- |
+| Fond de page / fond doux | `#FFFFFF` / `#F6F4EE` | `#13162B` / `#1C2040` (bleu nuit de l'iris) | — |
+| Encre | `#21254A` | `#F3EFE6` (crème) | 15,54 / 13,76 |
+| Texte secondaire / axes | `#4F536B` / `#5D6175` | `#BDBACB` / `#A9AABF` | 9,39 / 7,81 |
+| Bordures / grilles | `#D9D6CC` / `#ECEAE3` | `#353A60` / `#262A49` | — |
+| Sélection | `#3F6A1F` | `#8CC152` (feuille claire, texte bleu nuit 8,38) | 8,38 / 7,42 |
+| Prévision / liens | `#1E5066` | `#6CC3BF` / `#8DD3CF` (bleu-vert de l'iris) | 8,66 / 10,49 |
+| Soudure | ocre 22 % | ocre 13 % (valeur de la SPEC) | — |
+| Accent de marque | `#97570D` | `#E39A3B` (ocre des épis, ΔE2000 26,8 du rouge d'alerte) | 7,60 |
+| Hausse anormale | `#B3261E` | `#FF7B72` + ▲ + mot | 7,07 |
+| Baisse anormale | `#4A5568` | `#9DAACB` + ▼ + mot | 7,68 |
+| Fond de carte | OpenStreetMap | CARTO Dark Matter (données OpenStreetMap, « © CARTO » ajouté) | — |
+| Logo | logo tel quel (transparent) | version d'Ahmad à œil blanc, sans pastille | — |
+
+Contraste et écart marque/alerte vérifiés par test dans les deux modes (`tests/unit/test_tokens.py`) ; deutéranopie simulée : `docs/design/captures/v2-sombre-daltonisme-deuteranopie.png`.
+
 ## Typography
 
 Public Sans (OFL, auto-hébergée dans `src/dashboard/static/fonts`) partout. Échelle de la SPEC : titre de page 32 px / 700 (26 px sous 640 px de large), section 22 px / 650, bloc 18 px / 600, texte 15-16 px, notes 13-14 px. Chiffres tabulaires dans les tableaux. Espace insécable avant « ? » et trait d'union insécable dans les titres (« mois‑ci ? » ne se coupe pas).

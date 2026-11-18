@@ -41,6 +41,18 @@ Référence : `docs/design/maquette-v2/export/` (SPEC.md, accueil.png, fiche-mar
 | Formes | rayons 8/6/999, bordure 1 px, ni ombre ni dégradé | 6 px partout | oui | Fait par CSS (rayon des blocs et des puces). |
 | Couleurs | vert foncé + paille | vert foncé + paille | oui | Remplacées par la charte tirée du logo (DESIGN.md). |
 
+## Mode sombre (maquette `*-sombre.png`)
+
+| Élément | Maquette | Réalisé | Faisable en Streamlit ? | Comment / état |
+| --- | --- | --- | --- | --- |
+| Thème sombre | jetons sombres de la SPEC (base verte) | jetons harmonisés avec le logo (base bleu nuit) | oui | `[theme.light]` / `[theme.dark]` dans `config.toml`, sans `base` : le site suit le système. Comparaisons : `v2-sombre-comparaison-*.png`. |
+| Bouton clair/sombre dans l'en-tête | bouton | bouton réel, libellé, 44 px | approché | Streamlit n'a pas d'emplacement pour un bouton dans la barre du haut : le bouton est un vrai `st.button`, épinglé dans la bande de l'en-tête par CSS. |
+| Choix gardé dans l'URL | `&theme=sombre` | `&theme=sombre` / `&theme=clair`, gardé par tous les liens | oui, avec un script | Python ne peut pas imposer un mode au navigateur : un petit script écrit le choix là où Streamlit le garde (`localStorage`, clé `stActiveTheme-<page>-v2`, Streamlit 1.67) et recharge une fois. Clé interne de Streamlit : à revérifier à chaque mise à jour de Streamlit. |
+| Changement du mode du système page ouverte | — | suivi | oui | Styles de page instantanés (`prefers-color-scheme`) ; carte, graphiques et logo par rechargement automatique (la vue est dans l'URL). |
+| Carte sombre | fond sombre | CARTO Dark Matter (données OSM, « © CARTO » affiché) | oui | Sans clé, licence CARTO pour usage non commercial ; attribution visible. |
+| Graphique et légende | sombres | couleurs du thème (fond, encre, axes, soudure 13 %) | oui | Couleurs passées à Plotly depuis `tokens.palette("dark")`. |
+| Logo | — | version à œil blanc, sans pastille | oui | Lisible sur bleu nuit ; pastille non nécessaire. |
+
 ## Reste pour la phase B (React + MapLibre), non commencée
 
 - Marqueurs triangulaires ▲ ▼ sur la carte et ajustement exact aux limites du pays, quelle que soit la largeur.

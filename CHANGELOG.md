@@ -13,6 +13,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les
 - Changer de pays en cliquant sur la carte ; vue « Tous » avec tous les pays suivis ; Maroc (indice national) et Côte d'Ivoire (consultation seule) signalés.
 - Écart maquette / réalisé : `docs/design/ECART_MAQUETTE.md` et captures `docs/design/captures/v2-*`.
 
+### Ajouté (mode sombre)
+- Mode sombre automatique (suit le système) et bouton « Mode sombre » / « Mode clair » dans l'en-tête ; le choix est gardé dans l'adresse (`&theme=sombre`).
+- Palette sombre tirée du logo (bleu nuit, crème, feuille, bleu-vert de l'iris, ocre), contrastes AA vérifiés par test dans les deux modes ; carte CARTO Dark Matter ; logo à œil blanc en mode sombre.
+
 ### Modifié
 - Le cache du tableau de bord dépend de l'identifiant du run publié : les nouveaux chiffres s'affichent moins d'une minute après une mise à jour, au lieu d'une heure.
 - La molette ne zoome plus la carte (elle faisait défiler la carte au lieu de la page) : boutons + / − et pincement.

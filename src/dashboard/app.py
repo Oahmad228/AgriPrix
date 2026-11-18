@@ -23,9 +23,13 @@ from src.dashboard.client import ApiError  # noqa: E402
 from src.dashboard.common import (  # noqa: E402, F401  (re-exported for the tests)
     CSS,
     commodity_fr,
+    css,
+    current_theme,
+    forced_theme,
     gain_summary,
     number_format,
     restore_params,
+    theme_script,
 )
 
 HERE = Path(__file__).parent
@@ -52,15 +56,32 @@ def pages() -> list:
     ]
 
 
+def theme_button(theme: str) -> None:
+    """Light/dark switch: a real button (44 px), pinned in the header band by CSS.
+
+    It writes the choice in the URL (?theme=sombre|clair); THEME_SCRIPT applies it."""
+    with st.container(key="theme_toggle"):
+        dark = theme == "dark"
+        label = "Mode clair" if dark else "Mode sombre"
+        icon = ":material/light_mode:" if dark else ":material/dark_mode:"
+        if st.button(label, icon=icon, help="Changer le thème de couleur", key="theme_btn"):
+            st.query_params["theme"] = "clair" if dark else "sombre"
+            st.rerun()
+
+
 def main() -> None:
     """Render the AgriPrix Observatory dashboard."""
-    st.set_page_config(
-        page_title="AgriPrix Observatory", page_icon=str(BRAND / "favicon-32.png"), layout="wide"
-    )
-    st.logo(str(BRAND / "agriprix-lockup.png"), size="large")
-    st.markdown(CSS, unsafe_allow_html=True)
+    theme = current_theme()
+    # Light mode: the logo as given (transparent); dark mode: its version with a white eye.
+    suffix = "-sombre" if theme == "dark" else ""
+    st.set_page_config(page_title="AgriPrix Observatory",
+                       page_icon=str(BRAND / f"favicon-32{suffix}.png"), layout="wide")  # fmt: skip
+    st.logo(str(BRAND / f"agriprix-lockup{suffix}.png"), size="large")
+    st.markdown(css(forced_theme()), unsafe_allow_html=True)
+    st.html(theme_script(forced_theme()), unsafe_allow_javascript=True)
     page = st.navigation(pages(), position="top")
     restore_params()
+    theme_button(theme)
     try:
         page.run()
     except ApiError as exc:

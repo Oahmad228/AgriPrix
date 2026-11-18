@@ -97,3 +97,19 @@ def test_date_axis_labels_every_year_or_quarter() -> None:
     assert (
         charts._date_ticks(pd.Timestamp("2000-01-01"), pd.Timestamp("2027-01-01"))["dtick"] == "M48"
     )
+
+
+def test_charts_and_map_follow_the_dark_mode() -> None:
+    from src.dashboard import tokens
+
+    dark = tokens.DARK
+    fig = charts.price_figure(
+        [{"period": "2025-01-01", "value": 200.0, "is_observed": True}], [], [], "KG", "XOF",
+        "06,07,08,09", theme="dark",
+    )  # fmt: skip
+    assert fig.layout.paper_bgcolor == dark["BG"]
+    assert fig.data[-1].line.color == dark["INK"]  # observed price line in cream
+    mapped = maps.market_map([_point(1, 12.4, -1.5, "UP")], "BFA", theme="dark")
+    assert mapped.layout.map.style == "carto-darkmatter"
+    assert mapped.data[0].marker.color == dark["ALERT_UP"]
+    assert "© CARTO" in maps.attribution("dark") and "CARTO" not in maps.attribution("light")

@@ -157,3 +157,25 @@ Ordre de haut en bas :
 | Suivre, comparer, alertes SMS / e-mail | non | oui (architecture à proposer) |
 
 Si Streamlit empêche de reproduire un élément proprement, le signaler à Ahmad plutôt que de bricoler.
+
+## Mode sombre
+
+Fichiers : `accueil-sombre.html/.png`, `fiche-marche-sombre.html/.png`, `mobile-sombre.html/.png`, sources `../MainSombre.dc.html`, `../MarcheSombre.dc.html`, `../MobileSombre.dc.html`. Même contenu et même mise en page que le thème clair, seules les couleurs changent.
+
+| Rôle | Clair | Sombre |
+| --- | --- | --- |
+| Fond de page | `#FFFFFF` | `#111A16` |
+| Fond des blocs | `#FFFFFF` | `#18231E` |
+| Fond doux | `#F1F4F1` | `#1E2B25` |
+| En-tête | `#24453A` | `#16211C` + filet `#2B3A32` |
+| Encre | `#1E2B24` | `#E6EDE9` |
+| Texte secondaire | `#4E5A53` / `#5B6660` | `#AEBAB3` / `#9AA79F` |
+| Bordures / grilles | `#D6DDD8` / `#E6EBE7` | `#33423A` / `#27342D` |
+| Sélection (puces, bouton principal) | `#24453A` | `#2E7D62`, bordure `#3F8F70` |
+| Paille (onglet actif, soudure) | `#E9C46A`, texte `#1E2B24` | identique ; soudure à 13 % d'opacité au lieu de 28 % |
+| Prévision | `#2A6F97` | `#62AEDB` |
+| Liens | `#1F5A7A` | `#86C6EC` (survol `#B3DCF3`) |
+| Hausse anormale | `#B3261E` + ▲ + mot | `#F0837B` + ▲ + mot |
+| Baisse anormale | `#4A5568` + ▼ + mot | `#A9B6C9` + ▼ + mot |
+
+Ces valeurs viennent de la maquette. Elles seront harmonisées avec les couleurs du logo et vérifiées au contraste (WCAG AA) lors de l'intégration.

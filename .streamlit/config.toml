@@ -13,7 +13,14 @@ gatherUsageStats = false
 toolbarMode = "viewer"  # no Deploy button or developer menu on the public demo
 
 [theme]
-base = "light"
+# No "base": the app follows the visitor's system setting (light or dark), each mode below.
+baseRadius = "6px"
+font = "Public Sans, system-ui, sans-serif"
+headingFont = "Public Sans, system-ui, sans-serif"
+headingFontWeights = [700, 650, 600]
+headingFontSizes = ["2rem", "1.375rem", "1.125rem"]
+
+[theme.light]
 primaryColor = "#3F6A1F"            # SELECT: dark leaf green (selection, active pill and tab)
 backgroundColor = "#FFFFFF"         # BG
 secondaryBackgroundColor = "#F6F4EE"  # BG_SOFT: light cream
@@ -21,12 +28,17 @@ textColor = "#21254A"               # INK: logo navy
 linkColor = "#1E5066"               # LINK: logo deep blue-green
 borderColor = "#D9D6CC"             # BORDER
 dataframeBorderColor = "#ECEAE3"    # GRID
-baseRadius = "6px"
-font = "Public Sans, system-ui, sans-serif"
-headingFont = "Public Sans, system-ui, sans-serif"
-headingFontWeights = [700, 650, 600]
-headingFontSizes = ["2rem", "1.375rem", "1.125rem"]
 chartCategoricalColors = ["#21254A", "#1E5066", "#B3261E", "#97570D", "#4A5568"]
+
+[theme.dark]
+primaryColor = "#8CC152"            # SELECT: light leaf green
+backgroundColor = "#13162B"         # BG: iris navy at night
+secondaryBackgroundColor = "#1C2040"  # BG_SOFT
+textColor = "#F3EFE6"               # INK: cream
+linkColor = "#8DD3CF"               # LINK: light iris teal
+borderColor = "#353A60"             # BORDER
+dataframeBorderColor = "#262A49"    # GRID
+chartCategoricalColors = ["#F3EFE6", "#6CC3BF", "#FF7B72", "#E39A3B", "#9DAACB"]
 
 [[theme.fontFaces]]
 family = "Public Sans"

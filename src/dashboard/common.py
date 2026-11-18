@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 from datetime import date
@@ -138,6 +139,8 @@ class View:
                "h": str(self.horizon), "periode": self.period}  # fmt: skip
         if self.series_id is not None:
             out["marche"] = str(self.series_id)
+        if forced_theme():
+            out["theme"] = param("theme")
         return out
 
 
@@ -243,6 +246,26 @@ def filter_bar(*, with_market: bool) -> tuple[View, list[dict], list[dict]]:
 
 
 # --- Data blocks -----------------------------------------------------------------------
+
+
+THEME_PARAM = {"sombre": "dark", "clair": "light"}
+
+
+def forced_theme() -> str | None:
+    """Mode chosen with the light/dark button (?theme=sombre|clair), None = follow the system."""
+    return THEME_PARAM.get(param("theme") or "")
+
+
+def current_theme() -> str:
+    """ "dark" or "light": the URL's choice, else the mode Streamlit applies (the system's)."""
+    forced = forced_theme()
+    if forced:
+        return forced
+    try:
+        kind = st.context.theme.type
+    except Exception:  # noqa: BLE001 - outside a session (tests, scripts)
+        kind = None
+    return "dark" if kind == "dark" else "light"
 
 
 def recent_since(country: dict) -> str:
@@ -392,22 +415,27 @@ def footer() -> None:
     )
 
 
-CSS = f"""
-<style>
-  :root {{ --ap-ink: {tk.INK}; --ap-muted: {tk.TEXT_MUTED}; --ap-border: {tk.BORDER};
-           --ap-soft: {tk.BG_SOFT}; --ap-brand: {tk.BRAND}; --ap-select: {tk.SELECT}; }}
+def _rules(c: dict) -> str:
+    """Style rules in the colours of one palette."""
+    return f"""
+  :root {{ --ap-ink: {c["INK"]}; --ap-muted: {c["TEXT_MUTED"]}; --ap-border: {c["BORDER"]};
+           --ap-soft: {c["BG_SOFT"]}; --ap-brand: {c["BRAND"]}; --ap-select: {c["SELECT"]}; }}
   [data-testid="stDataFrame"], [data-testid="stTable"], .ap-num {{ font-variant-numeric: tabular-nums; }}
-  ::selection {{ background: {tk.SEASON_TAG_BG}; color: {tk.INK}; }}
-  :focus-visible {{ outline: 2px solid {tk.FORECAST} !important; outline-offset: 2px; }}
+  ::selection {{ background: {c["SEASON_TAG_BG"]}; color: {c["INK"]}; }}
+  :focus-visible {{ outline: 2px solid {c["FORECAST"]} !important; outline-offset: 2px; }}
   /* Light header with a thin rust rule (brand accent, never an alert). */
   [data-testid="stMainBlockContainer"], .block-container {{ padding-top: 4.2rem; }}
   [data-testid="stHeaderLogo"], img[data-testid="stLogo"] {{ height: 2.75rem; max-height: 2.75rem; }}
-  header[data-testid="stHeader"] {{ background: #FFFFFF; border-bottom: 2px solid {tk.BRAND}; }}
+  /* Light/dark button pinned in the header band (Streamlit has no widget slot there). */
+  .st-key-theme_toggle {{ position: fixed; top: .55rem; right: 3.4rem; z-index: 1000001;
+                          width: auto; }}
+  .st-key-theme_toggle button {{ min-height: 44px; border-radius: 999px; padding: 0 .9rem; }}
+  header[data-testid="stHeader"] {{ background: {c["BG"]}; border-bottom: 2px solid {c["BRAND"]}; }}
   /* Blocks: 8 px radius, 1 px border, no shadow. */
   div[data-testid="stVerticalBlock"].st-emotion-cache-0, .stVerticalBlock[class*="border"] {{ border-radius: 8px; }}
   [data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 8px; box-shadow: none; }}
   /* Filter bar on the soft background; pills fully rounded. */
-  .st-key-filters {{ background: {tk.BG_SOFT}; border-radius: 8px; padding: .75rem 1rem .25rem; }}
+  .st-key-filters {{ background: {c["BG_SOFT"]}; border-radius: 8px; padding: .75rem 1rem .25rem; }}
   .st-key-filters [data-testid="stButtonGroup"] button {{ border-radius: 999px; min-height: 40px; }}
   @media (max-width: 640px) {{
     h1 {{ font-size: 1.65rem !important; line-height: 1.2 !important; }}
@@ -416,35 +444,87 @@ CSS = f"""
     .st-key-filters [data-testid="stButtonGroup"] button {{ flex: 0 0 auto; min-height: 44px; }}
   }}
   .ap-lead {{ font-size: 1.08rem; line-height: 1.55; max-width: 72ch; margin: .2rem 0 .4rem; }}
-  .ap-note {{ color: {tk.TEXT_MUTED}; font-size: .92rem; max-width: 78ch; }}
-  .ap-sub {{ color: {tk.TEXT_MUTED}; font-size: 1rem; margin-top: -.6rem; }}
-  .ap-tag {{ display: inline-block; padding: 0 .45rem; border-radius: 4px; background: {tk.SEASON_TAG_BG};
-             color: {tk.INK}; font-size: .85rem; }}
-  .ap-badge {{ display: inline-block; padding: .15rem .6rem; border: 1px solid {tk.BORDER};
-               border-radius: 999px; font-size: .9rem; white-space: nowrap; background: #fff; }}
-  .ap-bias {{ color: {tk.TEXT_MUTED}; font-size: .92rem; }}
+  .ap-note {{ color: {c["TEXT_MUTED"]}; font-size: .92rem; max-width: 78ch; }}
+  .ap-sub {{ color: {c["TEXT_MUTED"]}; font-size: 1rem; margin-top: -.6rem; }}
+  .ap-tag {{ display: inline-block; padding: 0 .45rem; border-radius: 4px; background: {c["SEASON_TAG_BG"]};
+             color: {c["INK"]}; font-size: .85rem; }}
+  .ap-badge {{ display: inline-block; padding: .15rem .6rem; border: 1px solid {c["BORDER"]};
+               border-radius: 999px; font-size: .9rem; white-space: nowrap; background: {c["BG"]}; }}
+  .ap-bias {{ color: {c["TEXT_MUTED"]}; font-size: .92rem; }}
   .ap-alert-head {{ display: flex; justify-content: space-between; gap: .5rem; font-weight: 600;
                     font-size: 1.02rem; margin: 0; }}
-  .ap-alert-head .up {{ color: {tk.ALERT_UP}; }} .ap-alert-head .down {{ color: {tk.ALERT_DOWN}; }}
+  .ap-alert-head .up {{ color: {c["ALERT_UP"]}; }} .ap-alert-head .down {{ color: {c["ALERT_DOWN"]}; }}
   .ap-alert p {{ margin: .15rem 0; }}
-  .ap-factor-label {{ color: {tk.TEXT_MUTED}; font-size: .9rem; margin: 0; }}
+  .ap-factor-label {{ color: {c["TEXT_MUTED"]}; font-size: .9rem; margin: 0; }}
   .ap-factor-value {{ font-size: 1.25rem; font-weight: 650; margin: .1rem 0; }}
-  .ap-factor-source {{ color: {tk.TEXT_MUTED}; font-size: .82rem; margin: 0; }}
+  .ap-factor-source {{ color: {c["TEXT_MUTED"]}; font-size: .82rem; margin: 0; }}
   table.ap-var {{ width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }}
-  table.ap-var th {{ text-align: left; font-weight: 600; padding: .55rem .8rem; border-bottom: 1px solid {tk.BORDER}; }}
-  table.ap-var td {{ padding: .55rem .8rem; border-bottom: 1px solid {tk.GRID}; }}
+  table.ap-var th {{ text-align: left; font-weight: 600; padding: .55rem .8rem; border-bottom: 1px solid {c["BORDER"]}; }}
+  table.ap-var td {{ padding: .55rem .8rem; border-bottom: 1px solid {c["GRID"]}; }}
   .ap-bar {{ display: flex; align-items: center; gap: .6rem; }}
-  .ap-bar span.track {{ flex: 1; height: 8px; background: {tk.GRID}; border-radius: 999px; overflow: hidden; }}
-  .ap-bar span.fill {{ display: block; height: 100%; background: {tk.FORECAST}; }}
+  .ap-bar span.track {{ flex: 1; height: 8px; background: {c["GRID"]}; border-radius: 999px; overflow: hidden; }}
+  .ap-bar span.fill {{ display: block; height: 100%; background: {c["FORECAST"]}; }}
   .ap-big {{ font-size: 2.4rem; font-weight: 700; line-height: 1.1; }}
-  .ap-panel {{ background: {tk.BG_SOFT}; border-radius: 8px; padding: .6rem .8rem; margin: .4rem 0; }}
-  .ap-crumbs {{ font-size: .92rem; color: {tk.TEXT_MUTED}; }}
-  .ap-event {{ border-left: 2px solid {tk.BORDER}; padding: 0 0 .6rem .8rem; margin: 0; }}
-  .ap-event small {{ color: {tk.TEXT_MUTED}; }}
-  .ap-footer {{ border-top: 1px solid {tk.BORDER}; margin-top: 2rem; padding-top: 1rem;
-                color: {tk.TEXT_MUTED}; font-size: .9rem; }}
+  .ap-panel {{ background: {c["BG_SOFT"]}; border-radius: 8px; padding: .6rem .8rem; margin: .4rem 0; }}
+  .ap-crumbs {{ font-size: .92rem; color: {c["TEXT_MUTED"]}; }}
+  .ap-event {{ border-left: 2px solid {c["BORDER"]}; padding: 0 0 .6rem .8rem; margin: 0; }}
+  .ap-event small {{ color: {c["TEXT_MUTED"]}; }}
+  .ap-footer {{ border-top: 1px solid {c["BORDER"]}; margin-top: 2rem; padding-top: 1rem;
+                color: {c["TEXT_MUTED"]}; font-size: .9rem; }}
   a.ap-link {{ display: inline-flex; align-items: center; min-height: 44px; font-weight: 600;
                text-decoration: none; }}
   a.ap-link:hover {{ text-decoration: underline; }}
-</style>
 """
+
+
+def css(forced: str | None = None) -> str:
+    """Page styles. forced = "light" or "dark" when the visitor chose a mode with the button;
+    otherwise both palettes are written and the browser picks the system's one, which is
+    also the mode Streamlit follows, so a change of system mode applies at once."""
+    if forced in tk.THEMES:
+        return f"<style>{_rules(tk.palette(forced))}</style>"
+    return (
+        f"<style>{_rules(tk.palette('light'))}\n"
+        f"@media (prefers-color-scheme: dark) {{{_rules(tk.palette('dark'))}}}</style>"
+    )
+
+
+# Streamlit keeps the visitor's mode in localStorage, one key per page path
+# ("stActiveTheme-<path>-v2" = "Light" | "Dark" | "System", Streamlit 1.67). The script below
+# writes the URL's choice there for every page and reloads once; without a choice it clears
+# the keys (follow the system) and reloads when the system mode changes, because the map,
+# charts and logo are drawn on the server in the current mode.
+PAGE_PATHS = ("", "marches", "facteurs", "fiabilite", "donnees")
+THEME_SCRIPT = """<script>
+(() => {
+  const w = window.parent || window;
+  const wanted = "__WANTED__";  // written by the server: the script changes with the mode
+  const parts = w.location.pathname.split("/");
+  const last = parts[parts.length - 1];
+  const base = (__PAGES__.includes(last) ? parts.slice(0, -1) : parts).join("/");
+  const key = (page) => `stActiveTheme-${base}/${page}-v2`;
+  const current = JSON.parse(w.localStorage.getItem(key(last)) || '"System"');
+  if (current !== wanted) {
+    for (const page of __PAGES__) {
+      if (wanted === "System") w.localStorage.removeItem(key(page));
+      else w.localStorage.setItem(key(page), JSON.stringify(wanted));
+    }
+    w.location.reload();
+    return;
+  }
+  if (wanted === "System" && !w.__agriprixThemeWatch) {
+    w.__agriprixThemeWatch = true;
+    w.matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", () => w.location.reload());
+  }
+})();
+</script>""".replace("__PAGES__", json.dumps(PAGE_PATHS))
+
+
+def theme_script(forced: str | None) -> str:
+    """THEME_SCRIPT for the mode chosen in the URL ("light", "dark", or None = system)."""
+    wanted = {"dark": "Dark", "light": "Light"}.get(forced or "", "System")
+    return THEME_SCRIPT.replace("__WANTED__", wanted)
+
+
+CSS = css()  # light styles, kept for imports

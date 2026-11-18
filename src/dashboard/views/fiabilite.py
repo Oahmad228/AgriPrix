@@ -5,7 +5,16 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 from src.dashboard import charts, client
-from src.dashboard.common import GAIN_INTRO, GITHUB, MODEL_FR, WINDOWS, footer, gain_summary, month
+from src.dashboard.common import (
+    GAIN_INTRO,
+    GITHUB,
+    MODEL_FR,
+    WINDOWS,
+    current_theme,
+    footer,
+    gain_summary,
+    month,
+)
 
 
 def render() -> None:
@@ -15,7 +24,7 @@ def render() -> None:
     window = st.radio("Période évaluée", list(WINDOWS), format_func=WINDOWS.get, horizontal=True)
     metrics = client.model_metrics(window)["items"]
     st.markdown(f'<p class="ap-lead">{GAIN_INTRO}</p>', unsafe_allow_html=True)
-    st.plotly_chart(charts.gain_figure(metrics), width="stretch",
+    st.plotly_chart(charts.gain_figure(metrics, theme=current_theme()), width="stretch",
                     config={"displayModeBar": False})  # fmt: skip
     st.markdown(f'<p class="ap-note">{gain_summary(metrics, window)}</p>', unsafe_allow_html=True)
     coverage = pd.DataFrame(

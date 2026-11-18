@@ -26,6 +26,17 @@ STATES = {
     "DOWN": ("▼ Baisse anormale", "▼", ALERT_DOWN, 16),
     "NORMAL": ("○ Prix dans la normale", "○", NORMAL, 10),
 }
+
+
+def attribution(theme: str | None = None) -> str:
+    """Credits under the map (the dark basemap is drawn by CARTO from OpenStreetMap data)."""
+    if theme == "dark":
+        return ATTRIBUTION.replace(
+            "© contributeurs OpenStreetMap", "© contributeurs OpenStreetMap, © CARTO"
+        )
+    return ATTRIBUTION
+
+
 ATTRIBUTION = (
     "Fond de carte © contributeurs OpenStreetMap · frontières geoBoundaries (CC BY, CC BY-SA "
     "ou ODbL selon le pays) · positions des marchés : WFP"
@@ -66,12 +77,13 @@ def bounds(iso3: str) -> tuple[float, float, float, float] | None:
     return min(lons), min(lats), max(lons), max(lats)
 
 
-def borders(iso3: str | None) -> list[dict]:
+def borders(iso3: str | None, theme: str | None = None) -> list[dict]:
     """Line layers: regions (Burkina Faso) and the outline of the selected country."""
     layers: list[dict] = []
     if iso3 is None:
         return layers
-    for level, width, color in (("ADM1", 0.8, "#8A8C9C"), ("ADM0", 2.2, INK)):
+    c = tk.palette(theme)
+    for level, width, color in (("ADM1", 0.8, c["NORMAL"]), ("ADM0", 2.2, c["INK"])):
         geo = _geojson(iso3, level)
         if geo:
             layers.append({"source": geo, "type": "line", "color": color,
@@ -99,7 +111,9 @@ def view(countries: list[str], points: list[dict]) -> tuple[dict, float]:
     return {"lat": (lat0 + lat1) / 2, "lon": (lon0 + lon1) / 2}, zoom
 
 
-def _country_trace(countries: dict[str, str], selected: str | None) -> go.Choroplethmap | None:
+def _country_trace(
+    countries: dict[str, str], selected: str | None, theme: str | None = None
+) -> go.Choroplethmap | None:
     """All covered countries as clickable areas: the selected one clear, the others tinted."""
     features, ids, names, fills = [], [], [], []
     for iso3, name in countries.items():
@@ -118,9 +132,10 @@ def _country_trace(countries: dict[str, str], selected: str | None) -> go.Chorop
     return go.Choroplethmap(
         geojson={"type": "FeatureCollection", "features": features},
         locations=ids, z=fills, zmin=0, zmax=2,
-        colorscale=[[0, "rgba(255,255,255,0)"], [0.5, "rgba(246,244,238,0.55)"],
+        colorscale=[[0, "rgba(255,255,255,0)"],
+                    [0.5, "rgba(246,244,238,0.55)" if theme != "dark" else "rgba(28,32,64,0.45)"],
                     [1, "rgba(218,148,53,0.30)"]],
-        showscale=False, marker={"line": {"width": 1.2, "color": "#8A8C9C"}},
+        showscale=False, marker={"line": {"width": 1.2, "color": tk.palette(theme)["NORMAL"]}},
         hovertext=names, hovertemplate="%{hovertext}<extra></extra>",
         name="Pays", showlegend=False,
     )  # fmt: skip
@@ -131,6 +146,7 @@ def market_map(
     selected: str | None,
     countries: dict[str, str] | None = None,
     height: int = 480,
+    theme: str | None = None,
 ) -> go.Figure:
     """points: dicts with series_id, latitude, longitude, state (UP/DOWN/NORMAL), label, hover.
 
@@ -138,8 +154,9 @@ def market_map(
     countries: {ISO3: French name} of the covered countries (clickable outlines).
     """
     countries = countries or {}
+    c = tk.palette(theme)
     fig = go.Figure()
-    area = _country_trace(countries, selected)
+    area = _country_trace(countries, selected, theme)
     if area is not None:
         fig.add_trace(area)
     for iso3, label in NATIONAL_ONLY.items():
@@ -148,10 +165,11 @@ def market_map(
             fig.add_trace(go.Scattermap(
                 # In the northern third of the outline, where the cities and the index are.
                 lat=[box[3] - 0.3 * (box[3] - box[1])], lon=[box[2] - 0.4 * (box[2] - box[0])],
-                mode="text", text=[label], textfont={"size": 12, "color": INK},
+                mode="text", text=[label], textfont={"size": 12, "color": c["INK"]},
                 hoverinfo="skip", showlegend=False,
             ))  # fmt: skip
-    for state, (words, _symbol, color, size) in STATES.items():
+    for state, (words, _symbol, _light, size) in STATES.items():
+        color = c[{"UP": "ALERT_UP", "DOWN": "ALERT_DOWN", "NORMAL": "NORMAL"}[state]]
         subset = [p for p in points if p["state"] == state]
         if not subset:
             continue
@@ -168,7 +186,7 @@ def market_map(
             fig.add_trace(go.Scattermap(lat=lat, lon=lon, mode="markers", name=words,
                                         marker={"size": size, "color": color}, **common))  # fmt: skip
             fig.add_trace(go.Scattermap(lat=lat, lon=lon, mode="markers", showlegend=False,
-                                        marker={"size": size - 4, "color": "#FFFFFF"}, **common))  # fmt: skip
+                                        marker={"size": size - 4, "color": c["MARKER_FILL"]}, **common))  # fmt: skip
         else:
             fig.add_trace(go.Scattermap(
                 lat=lat, lon=lon, mode="markers+text", name=words,
@@ -181,17 +199,17 @@ def market_map(
             ))  # fmt: skip
     center, zoom = view([selected] if selected else list(countries), points)
     fig.update_layout(
-        map={"style": "open-street-map", "center": center, "zoom": zoom,
-             "layers": borders(selected)},
+        map={"style": c["MAP_STYLE"], "center": center, "zoom": zoom,
+             "layers": borders(selected, theme)},
         height=height,
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         legend={
             "orientation": "v", "yanchor": "top", "y": 0.99, "xanchor": "left", "x": 0.01,
-            "bgcolor": "rgba(255,255,255,0.94)", "bordercolor": tk.BORDER, "borderwidth": 1,
-            "font": {"family": FONT, "size": 13, "color": INK},
+            "bgcolor": c["BG"], "bordercolor": c["BORDER"], "borderwidth": 1,
+            "font": {"family": FONT, "size": 13, "color": c["INK"]},
         },
-        hoverlabel={"bgcolor": "white", "bordercolor": tk.BORDER,
-                    "font": {"family": FONT, "size": 13, "color": INK}},
+        hoverlabel={"bgcolor": c["BG"], "bordercolor": c["BORDER"],
+                    "font": {"family": FONT, "size": 13, "color": c["INK"]}},
         font={"family": FONT},
         clickmode="event+select",
         dragmode="pan",

@@ -13,6 +13,7 @@ from src.dashboard.common import (
     REASON_FR,
     View,
     commodity_fr,
+    current_theme,
     filter_bar,
     footer,
     latest_alerts,
@@ -123,7 +124,7 @@ def price_block(
             fig = charts.price_figure(
                 hist["observations"], client.anomalies(series_id=selected["series_id"])["items"],
                 forecasts, selected["unit_measure"], selected["currency_code"],
-                country["lean_season_months"], years=PERIODS[period][1],
+                country["lean_season_months"], years=PERIODS[period][1], theme=current_theme(),
             )  # fmt: skip
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             st.markdown('<p class="ap-note">Bandes ocre : période de soudure (juin-septembre). '

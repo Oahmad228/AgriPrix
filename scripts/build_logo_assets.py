@@ -27,7 +27,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LOGO_DIR = ROOT / "docs" / "design" / "logo"
 STATIC = ROOT / "src" / "dashboard" / "static" / "brand"
 CAPTURES = ROOT / "docs" / "design" / "captures"
-SOURCE = LOGO_DIR / "agriprix-logo-source.png"
+SOURCE = LOGO_DIR / "agriprix-logo-source.png"  # light mode: transparent, as given
+# Dark mode: Ahmad's version with an opaque white eye (2026-11-18), used as given.
+SOURCE_DARK = LOGO_DIR / "agriprix-logo-source-sombre.png"
 FONT = ROOT / "src" / "dashboard" / "static" / "fonts" / "PublicSans-Variable.ttf"
 
 WHITE_LEVEL = 232  # a pixel is "background white" when its darkest channel is above this
@@ -36,6 +38,8 @@ EYE_SEAL_RADIUS = 28  # px: closes the corners of the eye, only around the iris
 MARGIN = 0.04  # crop margin, share of the longest side
 INK = (33, 37, 74)  # tokens.INK #21254A
 MUTED = (79, 83, 107)  # tokens.TEXT_MUTED #4F536B
+INK_DARK = (243, 239, 230)  # tokens.DARK["INK"] #F3EFE6
+MUTED_DARK = (189, 186, 203)  # tokens.DARK["TEXT_MUTED"] #BDBACB
 SUBTITLE = "Observatoire des prix agricoles"
 
 
@@ -53,11 +57,11 @@ def load_source() -> Image.Image:
     return image.convert("RGB")
 
 
-def prepared_logo() -> Image.Image:
+def prepared_logo(source: Path | None = None) -> Image.Image:
     """The logo exactly as Ahmad gave it when it already has transparency (decision of
     2026-11-18: use the logo directly, no white added inside the eye). Only a source on a
     white background goes through transparent_logo()."""
-    image = Image.open(SOURCE)
+    image = Image.open(source or SOURCE)
     if image.mode == "RGBA" and image.getchannel("A").getextrema()[0] < 255:
         return image.copy()
     return transparent_logo(load_source())
@@ -138,7 +142,10 @@ def font(weight: int, size: int) -> ImageFont.FreeTypeFont:
 
 
 def horizontal(
-    logo: Image.Image, height: int = 256, subtitle_text: str | None = SUBTITLE
+    logo: Image.Image,
+    height: int = 256,
+    subtitle_text: str | None = SUBTITLE,
+    colors: tuple[tuple[int, int, int], tuple[int, int, int]] = (INK, MUTED),
 ) -> Image.Image:
     mark = logo.resize((round(logo.width * height / logo.height), height), Image.Resampling.LANCZOS)
     title, subtitle = font(700, round(height * 0.40)), font(400, round(height * 0.15))
@@ -157,10 +164,10 @@ def horizontal(
     spacing = round(height * 0.08) if subtitle_text else 0
     block = (t_box[3] - t_box[1]) + spacing + (s_box[3] - s_box[1])
     top = (height - block) // 2
-    draw.text((mark.width + gap, top - t_box[1]), "AgriPrix", font=title, fill=INK)
+    draw.text((mark.width + gap, top - t_box[1]), "AgriPrix", font=title, fill=colors[0])
     if subtitle_text:
         y_sub = top + (t_box[3] - t_box[1]) + spacing - s_box[1]
-        draw.text((mark.width + gap, y_sub), subtitle_text, font=subtitle, fill=MUTED)
+        draw.text((mark.width + gap, y_sub), subtitle_text, font=subtitle, fill=colors[1])
     return canvas
 
 
@@ -182,34 +189,39 @@ def palette(logo: Image.Image, clusters: int = 9) -> list[dict]:
     return out
 
 
+def export(logo: Image.Image, suffix: str, colors: tuple) -> None:
+    """Every size of one logo version (suffix "" = light mode, "-sombre" = dark mode)."""
+    logo.save(LOGO_DIR / f"agriprix-logo{suffix}.png", optimize=True)
+    for size in (1024, 512, 256):
+        square(logo, size).save(LOGO_DIR / f"agriprix-logo{suffix}-{size}.png", optimize=True)
+    horizontal(logo, colors=colors).save(
+        LOGO_DIR / f"agriprix-logo-horizontal{suffix}.png", optimize=True
+    )
+    # Always the whole logo (decision of 2026-11-18): header, favicons, app icons.
+    horizontal(logo, height=128, subtitle_text=None, colors=colors).save(
+        LOGO_DIR / f"agriprix-lockup{suffix}.png", optimize=True
+    )
+    for size in (16, 32, 48):
+        square(logo, size).save(LOGO_DIR / f"favicon-{size}{suffix}.png")
+    square(logo, 48).save(LOGO_DIR / f"favicon{suffix}.ico", sizes=[(16, 16), (32, 32), (48, 48)])
+    for size in (192, 512):
+        square(logo, size).save(LOGO_DIR / f"icon-{size}{suffix}.png", optimize=True)
+    for name in (f"agriprix-logo-horizontal{suffix}.png", f"agriprix-logo{suffix}-256.png",
+                 f"favicon-32{suffix}.png", f"icon-192{suffix}.png", f"agriprix-lockup{suffix}.png"):  # fmt: skip
+        shutil.copy(LOGO_DIR / name, STATIC / name)
+
+
 def main() -> None:
     STATIC.mkdir(parents=True, exist_ok=True)
     CAPTURES.mkdir(parents=True, exist_ok=True)
     logo = crop(prepared_logo())
-    logo.save(LOGO_DIR / "agriprix-logo.png", optimize=True)
-    for size in (1024, 512, 256):
-        square(logo, size).save(LOGO_DIR / f"agriprix-logo-{size}.png", optimize=True)
-    horizontal(logo).save(LOGO_DIR / "agriprix-logo-horizontal.png", optimize=True)
-
-    # The logo is always shown whole (decision of 2026-11-18): header lock-up, favicons and
-    # app icons all use the complete logo, never a cut-out part of it.
-    horizontal(logo, height=128, subtitle_text=None).save(
-        LOGO_DIR / "agriprix-lockup.png", optimize=True
-    )
-    for size in (16, 32, 48):
-        square(logo, size).save(LOGO_DIR / f"favicon-{size}.png")
-    square(logo, 48).save(LOGO_DIR / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)])
-    for size in (192, 512):
-        square(logo, size).save(LOGO_DIR / f"icon-{size}.png", optimize=True)
-
+    export(logo, "", (INK, MUTED))
+    if SOURCE_DARK.exists():
+        export(crop(prepared_logo(SOURCE_DARK)), "-sombre", (INK_DARK, MUTED_DARK))
     measured = palette(logo)
     (LOGO_DIR / "palette-mesuree.json").write_text(
         json.dumps(measured, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    # Files served by the dashboard (static folder).
-    for name in ("agriprix-logo-horizontal.png", "agriprix-logo-256.png", "favicon-32.png",
-                 "icon-192.png", "agriprix-lockup.png"):  # fmt: skip
-        shutil.copy(LOGO_DIR / name, STATIC / name)
     print(json.dumps(measured, ensure_ascii=False))
 
 

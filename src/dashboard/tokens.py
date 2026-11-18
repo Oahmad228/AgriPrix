@@ -48,9 +48,40 @@ NORMAL = "#6B7085"  # normal market: white disc with this outline
 MIN_BRAND_ALERT_DE = 20.0
 
 # Contrast thresholds (WCAG 2.1 AA): text 4.5:1, graphical objects 3:1.
-TEXT_TOKENS = {"INK": INK, "TEXT_MUTED": TEXT_MUTED, "LINK": LINK, "AXIS": AXIS,
-               "ALERT_UP": ALERT_UP, "ALERT_DOWN": ALERT_DOWN, "SELECT": SELECT}  # fmt: skip
-GRAPHIC_TOKENS = {"FORECAST": FORECAST, "BRAND": BRAND, "NORMAL": NORMAL}
+TEXT_NAMES = ("INK", "TEXT_MUTED", "LINK", "AXIS", "ALERT_UP", "ALERT_DOWN", "SELECT")
+GRAPHIC_NAMES = ("FORECAST", "BRAND", "NORMAL")
+ROLE_NAMES = (*TEXT_NAMES, *GRAPHIC_NAMES, "BG", "BG_SOFT", "BORDER", "GRID", "SELECT_TEXT",
+              "FORECAST_FAN", "SEASON", "SEASON_OPACITY", "SEASON_TAG_BG", "MAP_STYLE",
+              "MARKER_FILL")  # fmt: skip
+MAP_STYLE = "open-street-map"  # OSM tiles
+MARKER_FILL = "#FFFFFF"  # inside of a normal market marker
+
+LIGHT = {name: globals()[name] for name in ROLE_NAMES}
+
+# --- Dark mode: the same logo, read at night ---------------------------------------------
+# Background from the iris navy, text in the cream of the light mode's soft background,
+# the logo's leaf, teal and ochre brightened until they read on it. Alerts keep their
+# meaning (red = rise, slate = fall) in lighter tints; the brand accent becomes the wheat
+# ochre, far from the alert red (dE2000 26.8).
+DARK = {
+    "INK": "#F3EFE6", "TEXT_MUTED": "#BDBACB", "AXIS": "#A9AABF",
+    "BG": "#13162B", "BG_SOFT": "#1C2040", "BORDER": "#353A60", "GRID": "#262A49",
+    "SELECT": "#8CC152", "SELECT_TEXT": "#13162B",
+    "FORECAST": "#6CC3BF", "FORECAST_FAN": "rgba(108, 195, 191, 0.22)", "LINK": "#8DD3CF",
+    "SEASON": "#DA9435", "SEASON_OPACITY": 0.13, "SEASON_TAG_BG": "#4E3814",
+    "BRAND": "#E39A3B", "ALERT_UP": "#FF7B72", "ALERT_DOWN": "#9DAACB", "NORMAL": "#9A9EB8",
+    # Dark basemap: OpenStreetMap data drawn by CARTO ("Dark Matter"), no key.
+    "MAP_STYLE": "carto-darkmatter", "MARKER_FILL": "#13162B",
+}  # fmt: skip
+THEMES = {"light": LIGHT, "dark": DARK}
+
+TEXT_TOKENS = {name: INK if name == "INK" else LIGHT[name] for name in TEXT_NAMES}
+GRAPHIC_TOKENS = {name: LIGHT[name] for name in GRAPHIC_NAMES}
+
+
+def palette(theme: str | None) -> dict:
+    """Role -> colour for "light" or "dark" (anything else falls back to light)."""
+    return THEMES.get(theme or "light", LIGHT)
 
 
 def _rgb(hex_code: str) -> tuple[float, float, float]:

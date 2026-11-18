@@ -11,6 +11,7 @@ from src.dashboard.common import (
     MARKET,
     View,
     covered_countries,
+    current_theme,
     filter_bar,
     footer,
     latest_alerts,
@@ -61,7 +62,7 @@ def map_block(view: View, selected: list[dict], names: dict[str, str], alerts: d
         st.markdown(f"#### Carte des marchés · {product}, {where}")
         key = f"map_{view.country}_{view.group}"
         event = st.plotly_chart(
-            maps.market_map(points, view.country, names, height=470),
+            maps.market_map(points, view.country, names, height=470, theme=current_theme()),
             key=key, on_select="rerun", selection_mode="points", width="stretch",
             config=maps.CONFIG,
         )  # fmt: skip
@@ -88,7 +89,7 @@ def map_block(view: View, selected: list[dict], names: dict[str, str], alerts: d
             note += " Côte d'Ivoire : consultation seule, pas de prévision (valeurs agrégées WFP)."
         if any(c["country_iso3"] == "MAR" for c in selected):
             note += " Maroc : pas de marchés, un indice national FAOSTAT des prix alimentaires."
-        st.markdown(f'<p class="ap-note">{note}<br>{maps.ATTRIBUTION}.</p>',
+        st.markdown(f'<p class="ap-note">{note}<br>{maps.attribution(current_theme())}.</p>',
                     unsafe_allow_html=True)  # fmt: skip
 
 

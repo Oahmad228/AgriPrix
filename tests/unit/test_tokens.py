@@ -7,30 +7,44 @@ import pytest
 from src.dashboard import tokens as tk
 
 ROOT = Path(__file__).resolve().parents[2]
-BACKGROUNDS = {"blanc": tk.BG, "fond doux": tk.BG_SOFT}
+THEMES = sorted(tk.THEMES)
 
 
-@pytest.mark.parametrize("name", sorted(tk.TEXT_TOKENS))
-@pytest.mark.parametrize("background", sorted(BACKGROUNDS))
-def test_text_tokens_reach_aa(name: str, background: str) -> None:
-    ratio = tk.contrast(tk.TEXT_TOKENS[name], BACKGROUNDS[background])
-    assert ratio >= 4.5, f"{name} sur {background} : {ratio:.2f}:1 < 4,5:1"
+@pytest.mark.parametrize("theme", THEMES)
+@pytest.mark.parametrize("name", tk.TEXT_NAMES)
+@pytest.mark.parametrize("background", ["BG", "BG_SOFT"])
+def test_text_tokens_reach_aa(theme: str, name: str, background: str) -> None:
+    c = tk.palette(theme)
+    ratio = tk.contrast(c[name], c[background])
+    assert ratio >= 4.5, f"{theme} : {name} sur {background} : {ratio:.2f}:1 < 4,5:1"
 
 
-@pytest.mark.parametrize("name", sorted(tk.GRAPHIC_TOKENS))
-@pytest.mark.parametrize("background", sorted(BACKGROUNDS))
-def test_graphic_tokens_reach_3_to_1(name: str, background: str) -> None:
-    ratio = tk.contrast(tk.GRAPHIC_TOKENS[name], BACKGROUNDS[background])
-    assert ratio >= 3.0, f"{name} sur {background} : {ratio:.2f}:1 < 3:1"
+@pytest.mark.parametrize("theme", THEMES)
+@pytest.mark.parametrize("name", tk.GRAPHIC_NAMES)
+@pytest.mark.parametrize("background", ["BG", "BG_SOFT"])
+def test_graphic_tokens_reach_3_to_1(theme: str, name: str, background: str) -> None:
+    c = tk.palette(theme)
+    ratio = tk.contrast(c[name], c[background])
+    assert ratio >= 3.0, f"{theme} : {name} sur {background} : {ratio:.2f}:1 < 3:1"
 
 
-def test_white_text_on_selection_and_ink_on_season_tag() -> None:
-    assert tk.contrast(tk.SELECT_TEXT, tk.SELECT) >= 4.5
-    assert tk.contrast(tk.INK, tk.SEASON_TAG_BG) >= 4.5
+@pytest.mark.parametrize("theme", THEMES)
+def test_text_on_selection_and_season_tag(theme: str) -> None:
+    c = tk.palette(theme)
+    assert tk.contrast(c["SELECT_TEXT"], c["SELECT"]) >= 4.5
+    assert tk.contrast(c["INK"], c["SEASON_TAG_BG"]) >= 4.5
 
 
-def test_brand_accent_never_looks_like_an_alert() -> None:
-    assert tk.delta_e2000(tk.BRAND, tk.ALERT_UP) >= tk.MIN_BRAND_ALERT_DE
+def test_both_modes_define_every_role() -> None:
+    assert set(tk.LIGHT) == set(tk.DARK) == set(tk.ROLE_NAMES)
+    assert tk.palette("dark")["MAP_STYLE"] == "carto-darkmatter"
+    assert tk.palette("nonsense") is tk.LIGHT
+
+
+@pytest.mark.parametrize("theme", THEMES)
+def test_brand_accent_never_looks_like_an_alert(theme: str) -> None:
+    c = tk.palette(theme)
+    assert tk.delta_e2000(c["BRAND"], c["ALERT_UP"]) >= tk.MIN_BRAND_ALERT_DE
     # The raw logo rust would fail: that is why the accent was adjusted (DESIGN.md).
     assert tk.delta_e2000(tk.LOGO["rust"], tk.ALERT_UP) < tk.MIN_BRAND_ALERT_DE
 
@@ -47,14 +61,25 @@ def test_contrast_and_delta_e_reference_values() -> None:
 @pytest.mark.parametrize(
     "config", ["src/dashboard/.streamlit/config.toml", ".streamlit/config.toml"]
 )
-def test_streamlit_theme_mirrors_the_tokens(config: str) -> None:
+@pytest.mark.parametrize("theme", THEMES)
+def test_streamlit_theme_mirrors_the_tokens(config: str, theme: str) -> None:
     path = ROOT / config
     if not path.exists():  # the repository root is not mounted in every container
         pytest.skip(f"{config} not available here")
-    theme = tomllib.loads(path.read_text(encoding="utf-8"))["theme"]
-    assert theme["primaryColor"] == tk.SELECT
-    assert theme["textColor"] == tk.INK
-    assert theme["backgroundColor"] == tk.BG
-    assert theme["secondaryBackgroundColor"] == tk.BG_SOFT
-    assert theme["linkColor"] == tk.LINK
-    assert theme["borderColor"] == tk.BORDER
+    settings = tomllib.loads(path.read_text(encoding="utf-8"))["theme"]
+    assert "base" not in settings  # no forced mode: the app follows the system setting
+    section, c = settings[theme], tk.palette(theme)
+    assert section["primaryColor"] == c["SELECT"]
+    assert section["textColor"] == c["INK"]
+    assert section["backgroundColor"] == c["BG"]
+    assert section["secondaryBackgroundColor"] == c["BG_SOFT"]
+    assert section["linkColor"] == c["LINK"]
+    assert section["borderColor"] == c["BORDER"]
+
+
+def test_page_styles_carry_both_modes() -> None:
+    from src.dashboard.common import css
+
+    styles = css()
+    assert tk.LIGHT["BG_SOFT"] in styles and tk.DARK["BG_SOFT"] in styles
+    assert "@media (prefers-color-scheme: dark)" in styles

@@ -50,7 +50,7 @@ def month_label(period: date) -> str:
 
 
 def _season_bands(
-    fig: go.Figure, start: pd.Timestamp, end: pd.Timestamp, months: list[int]
+    fig: go.Figure, start: pd.Timestamp, end: pd.Timestamp, months: list[int], c: dict
 ) -> None:
     if not months:
         return
@@ -61,13 +61,18 @@ def _season_bands(
         if x1 < start or x0 > end:
             continue
         fig.add_vrect(
-            x0=x0, x1=x1, fillcolor=STRAW, opacity=tk.SEASON_OPACITY, line_width=0, layer="below"
+            x0=x0,
+            x1=x1,
+            fillcolor=c["SEASON"],
+            opacity=c["SEASON_OPACITY"],
+            line_width=0,
+            layer="below",
         )
     # Legend entry for the bands (vrects have none of their own).
     fig.add_trace(
         go.Scatter(
             x=[None], y=[None], mode="markers", name="Période de soudure",
-            marker={"symbol": "square", "size": 12, "color": STRAW, "opacity": 0.6},
+            marker={"symbol": "square", "size": 12, "color": c["SEASON"], "opacity": 0.6},
         )
     )  # fmt: skip
 
@@ -96,8 +101,12 @@ def price_figure(
     currency: str,
     lean_spec: str | None,
     years: int | None = 5,
+    theme: str | None = None,
 ) -> go.Figure:
-    """years: 1, 5 or None (whole history). Every year (or quarter on one year) is labelled."""
+    """years: 1, 5 or None (whole history). Every year (or quarter on one year) is labelled.
+
+    theme: "light" or "dark" (colours from tokens.palette)."""
+    c = tk.palette(theme)
     obs = pd.DataFrame(observations)
     obs["period"] = pd.to_datetime(obs["period"])
     measured = obs[obs["is_observed"]]
@@ -111,11 +120,11 @@ def price_figure(
     start = first if years is None else max(first, obs["period"].max() - pd.DateOffset(years=years))
 
     fig = go.Figure()
-    _season_bands(fig, start, end, lean_months(lean_spec))
+    _season_bands(fig, start, end, lean_months(lean_spec), c)
     fig.add_trace(
         go.Scatter(
             x=measured["period"], y=measured["value"], mode="lines", name="Prix relevé",
-            line={"color": INK, "width": 2},
+            line={"color": c["INK"], "width": 2},
             hovertemplate="%{x|%b %Y} : %{y:,.0f} " + label + "<extra></extra>",
         )
     )  # fmt: skip
@@ -124,13 +133,13 @@ def price_figure(
             go.Scatter(
                 x=other["period"], y=other["value"], mode="markers",
                 name="Valeur agrégée ou estimée (non utilisée par les modèles)",
-                marker={"symbol": "circle-open", "size": 6, "color": MUTED},
+                marker={"symbol": "circle-open", "size": 6, "color": c["AXIS"]},
                 hovertemplate="%{x|%b %Y} : %{y:,.0f} " + label + " (non mesurée)<extra></extra>",
             )
         )  # fmt: skip
     for direction, symbol, colour, name in (
-        ("UP", "triangle-up", ALERT_UP, "Alerte : hausse anormale"),
-        ("DOWN", "triangle-down", ALERT_DOWN, "Alerte : baisse anormale"),
+        ("UP", "triangle-up", c["ALERT_UP"], "Alerte : hausse anormale"),
+        ("DOWN", "triangle-down", c["ALERT_DOWN"], "Alerte : baisse anormale"),
     ):
         points = [a for a in alerts if a["direction"] == direction]
         if points:
@@ -140,7 +149,7 @@ def price_figure(
                     y=[a["observed_value"] for a in points],
                     mode="markers", name=name,
                     marker={"symbol": symbol, "size": 12, "color": colour,
-                            "line": {"color": "#FFFFFF", "width": 1.5}},
+                            "line": {"color": c["BG"], "width": 1.5}},
                     customdata=[[a["deviation_pct"], a["severity"]] for a in points],
                     hovertemplate="%{x|%b %Y} : %{y:,.0f} " + label
                     + "<br>%{customdata[0]:+.0f} % par rapport au niveau attendu<extra></extra>",
@@ -166,27 +175,27 @@ def price_figure(
         fig.add_trace(
             go.Scatter(
                 x=x, y=low, mode="lines", line={"width": 0}, fill="tonexty",
-                fillcolor=tk.FORECAST_FAN, name="Intervalle à 80 %", hoverinfo="skip",
+                fillcolor=c["FORECAST_FAN"], name="Intervalle à 80 %", hoverinfo="skip",
             )
         )  # fmt: skip
         fig.add_trace(
             go.Scatter(
                 x=x, y=point, mode="lines+markers", name="Prévision (1, 3 et 6 mois)",
-                line={"color": FORECAST, "width": 2, "dash": "dash"},
-                marker={"size": 7, "color": FORECAST},
+                line={"color": c["FORECAST"], "width": 2, "dash": "dash"},
+                marker={"size": 7, "color": c["FORECAST"]},
                 hovertemplate="%{x|%b %Y} : %{y:,.0f} " + label + " (prévision)<extra></extra>",
             )
         )  # fmt: skip
-        fig.add_vline(x=origin, line={"color": MUTED, "width": 1, "dash": "dot"})
+        fig.add_vline(x=origin, line={"color": c["AXIS"], "width": 1, "dash": "dot"})
 
     ticks = _date_ticks(start, end)
     two_lines = "ticktext" in ticks  # month over year: push the legend below both lines
     fig.update_layout(
         height=440 if two_lines else 420,
         margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        paper_bgcolor=tk.BG,
-        plot_bgcolor=tk.BG,
-        font={"family": FONT, "color": INK, "size": 13},
+        paper_bgcolor=c["BG"],
+        plot_bgcolor=c["BG"],
+        font={"family": FONT, "color": c["INK"], "size": 13},
         separators=", ",
         hovermode="closest",
         hoverlabel={"font": {"family": FONT}},
@@ -195,15 +204,16 @@ def price_figure(
         # Explicit date axis: the legend-only trace of the season bands has no x data, and
         # Plotly would otherwise infer a numeric axis from it and hide every price.
         xaxis={"type": "date", "range": [start, end + pd.DateOffset(days=20)], "showgrid": False,
-               "linecolor": GRID, **ticks},
-        yaxis={"title": {"text": label, "font": {"size": 12, "color": MUTED}},
-               "gridcolor": GRID, "zeroline": False, "tickformat": ",.0f"},
+               "linecolor": c["GRID"], **ticks},
+        yaxis={"title": {"text": label, "font": {"size": 12, "color": c["AXIS"]}},
+               "gridcolor": c["GRID"], "zeroline": False, "tickformat": ",.0f"},
     )  # fmt: skip
     return fig
 
 
-def gain_figure(rows: list[dict]) -> go.Figure:
+def gain_figure(rows: list[dict], theme: str | None = None) -> go.Figure:
     """Gain of each model vs persistence per horizon (positive = better than 'last price')."""
+    c = tk.palette(theme)
     frame = pd.DataFrame(rows)
     # Only the learned models: "same month last year" is far worse at short horizons and would
     # crush the scale (its figures stay in the table below the chart).
@@ -211,24 +221,28 @@ def gain_figure(rows: list[dict]) -> go.Figure:
     names = {"LightGBM_Global": "Modèle appris sur tous les marchés (LightGBM)",
              "Ridge_Seasonal": "Tendance et saison par marché (Ridge)",
              "SeasonalNaive": "Même mois l'an passé"}  # fmt: skip
-    colours = {"LightGBM_Global": FORECAST, "Ridge_Seasonal": tk.BRAND, "SeasonalNaive": MUTED}
+    colours = {
+        "LightGBM_Global": c["FORECAST"],
+        "Ridge_Seasonal": c["BRAND"],
+        "SeasonalNaive": c["AXIS"],
+    }
     fig = go.Figure()
     for model, block in frame.groupby("model_name"):
         fig.add_trace(
             go.Bar(
                 x=[f"{h} mois" for h in block["horizon_months"]], y=block["gain_vs_naive_pct"],
-                name=names.get(model, model), marker_color=colours.get(model, INK),
+                name=names.get(model, model), marker_color=colours.get(model, c["INK"]),
                 text=[f"{v:+.0f} %" for v in block["gain_vs_naive_pct"]], textposition="outside",
                 hovertemplate="%{x} : %{y:+.1f} %<extra>" + names.get(model, model) + "</extra>",
             )
         )  # fmt: skip
-    fig.add_hline(y=0, line={"color": INK, "width": 1})
+    fig.add_hline(y=0, line={"color": c["INK"], "width": 1})
     fig.update_layout(
         barmode="group", height=340, margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        paper_bgcolor=tk.BG, plot_bgcolor=tk.BG, separators=", ",
-        font={"family": FONT, "color": INK, "size": 13},
+        paper_bgcolor=c["BG"], plot_bgcolor=c["BG"], separators=", ",
+        font={"family": FONT, "color": c["INK"], "size": 13},
         legend={"orientation": "h", "yanchor": "top", "y": -0.12, "x": 0},
         yaxis={"title": {"text": "écart d'erreur vs « dernier prix connu » (%)", "font": {"size": 12}},
-               "gridcolor": GRID, "zeroline": False},
+               "gridcolor": c["GRID"], "zeroline": False},
     )  # fmt: skip
     return fig

@@ -75,7 +75,7 @@ def deuteranopia(image: Image.Image) -> Image.Image:
     return Image.fromarray((srgb * 255).round().astype(np.uint8))
 
 
-def favicon_sheet() -> Image.Image:
+def favicon_sheet(suffix: str = "") -> Image.Image:
     sheet = Image.new("RGB", (760, 230), (255, 255, 255))
     draw = ImageDraw.Draw(sheet)
     draw.text(
@@ -86,7 +86,7 @@ def favicon_sheet() -> Image.Image:
     )
     x = 20
     for size in (16, 32, 48):
-        icon = Image.open(LOGO / f"favicon-{size}.png").convert("RGBA")
+        icon = Image.open(LOGO / f"favicon-{size}{suffix}.png").convert("RGBA")
         for bg, y in (((241, 243, 244), 60), ((53, 54, 58), 120)):  # light and dark tab bars
             tile = Image.new("RGB", (size + 12, size + 12), bg)
             tile.paste(icon, (6, 6), icon)
@@ -98,26 +98,33 @@ def favicon_sheet() -> Image.Image:
     return sheet
 
 
-def main() -> None:
-    open_ = lambda name: Image.open(CAPTURES / name)  # noqa: E731
-    side_by_side(Image.open(MOCKUPS / "accueil.png"),
-                 [open_("v2-accueil-bureau.jpg"), open_("v2-accueil-bureau-bas.jpg")],
-                 "Accueil bureau", 900).save(CAPTURES / "v2-comparaison-accueil.png")  # fmt: skip
-    side_by_side(Image.open(MOCKUPS / "fiche-marche.png"),
-                 [open_("v2-fiche-bureau.jpg"), open_("v2-fiche-bureau-bas.jpg")],
-                 "Fiche marché bureau", 900).save(CAPTURES / "v2-comparaison-fiche.png")  # fmt: skip
-    side_by_side(Image.open(MOCKUPS / "mobile.png"),
-                 [open_("v2-accueil-telephone.jpg"), open_("v2-accueil-telephone-alertes.jpg")],
-                 "Téléphone 390 px", 390).save(CAPTURES / "v2-comparaison-mobile.png")  # fmt: skip
-    home = Image.open(CAPTURES / "v2-accueil-tous-bureau.jpg").convert("RGB")  # rises and falls
+def daltonism(capture: str, out: str) -> None:
+    home = Image.open(CAPTURES / capture).convert("RGB")
     pair = Image.new("RGB", (2 * home.width + 30, home.height + 50), (255, 255, 255))
     draw = ImageDraw.Draw(pair)
     draw.text((10, 10), "Vision normale | deutéranopie simulée (Machado et al., 2009)",
               font=font(650, 18), fill=INK)  # fmt: skip
     pair.paste(home, (10, 40))
     pair.paste(deuteranopia(home), (home.width + 20, 40))
-    pair.save(CAPTURES / "v2-daltonisme-deuteranopie.png")
+    pair.save(CAPTURES / out)
+
+
+def main() -> None:
+    open_ = lambda name: Image.open(CAPTURES / name)  # noqa: E731
+    # Light mode (files without suffix) and dark mode ("-sombre" mockups, "v2-sombre-" captures).
+    for mock, cap, label in (("", "v2-", ""), ("-sombre", "v2-sombre-", " (sombre)")):
+        side_by_side(Image.open(MOCKUPS / f"accueil{mock}.png"),
+                     [open_(f"{cap}accueil-bureau.jpg"), open_(f"{cap}accueil-bureau-bas.jpg")],
+                     f"Accueil bureau{label}", 900).save(CAPTURES / f"{cap}comparaison-accueil.png")  # fmt: skip
+        side_by_side(Image.open(MOCKUPS / f"fiche-marche{mock}.png"),
+                     [open_(f"{cap}fiche-bureau.jpg"), open_(f"{cap}fiche-bureau-bas.jpg")],
+                     f"Fiche marché bureau{label}", 900).save(CAPTURES / f"{cap}comparaison-fiche.png")  # fmt: skip
+        side_by_side(Image.open(MOCKUPS / f"mobile{mock}.png"),
+                     [open_(f"{cap}accueil-telephone.jpg"), open_(f"{cap}accueil-telephone-alertes.jpg")],
+                     f"Téléphone 390 px{label}", 390).save(CAPTURES / f"{cap}comparaison-mobile.png")  # fmt: skip
+        daltonism(f"{cap}accueil-tous-bureau.jpg", f"{cap}daltonisme-deuteranopie.png")
     favicon_sheet().save(CAPTURES / "v2-favicon.png")
+    favicon_sheet("-sombre").save(CAPTURES / "v2-sombre-favicon.png")
     print("ok")
 
 

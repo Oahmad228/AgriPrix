@@ -19,6 +19,7 @@ docker compose --profile jobs run --rm job-runner python scripts/build_logo_asse
 | `agriprix-lockup.png` | Logo + « AgriPrix », sans sous-titre : en-tête du site (44 px de haut) |
 | `favicon-16/32/48.png`, `favicon.ico` | Icône d'onglet : le logo complet réduit |
 | `icon-192.png`, `icon-512.png` | Icônes d'application |
+| `*-sombre.png`, `favicon-sombre.ico` | Mêmes fichiers pour le mode sombre, tirés de `agriprix-logo-source-sombre.png` (version d'Ahmad à œil blanc, utilisée telle quelle) ; texte en crème `#F3EFE6` |
 | `palette-mesuree.json` | Couleurs mesurées par k-means sur les pixels du logo |
 
 ## Règle principale
@@ -28,6 +29,10 @@ docker compose --profile jobs run --rm job-runner python scripts/build_logo_asse
 ## Transparence
 
 **Le logo est utilisé directement, tel qu'Ahmad l'a fourni** (décision du 2026-11-18) : le fichier source est déjà transparent, y compris à l'intérieur de l'œil, et le script ne fait que le recadrer et le redimensionner. Une première version remettait du blanc dans l'œil ; elle faisait une tache blanche sur un onglet sombre et a été abandonnée. Le script garde une méthode de détourage (`transparent_logo`) pour le cas d'une source sur fond blanc.
+
+## Mode clair et mode sombre
+
+Mode clair : le logo tel quel (fond transparent, y compris dans l'œil). Mode sombre : la version d'Ahmad avec le blanc de l'œil opaque, qui reste lisible sur fond bleu nuit ; aucune pastille claire n'est nécessaire derrière (`docs/design/captures/v2-sombre-favicon.png`).
 
 ## Zone de protection et taille
 
