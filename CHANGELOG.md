@@ -14,6 +14,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les
 ### Modifié
 - Mode sombre refait à l'identique de la maquette sombre validée (couleurs de `SPEC.md` telles quelles, toutes conformes AA).
 
+### Vérifié
+- Cohérence du thème sur les 18 combinaisons (système × URL × mémoire Streamlit) vérifiée dans Chrome et Edge (18/18 cohérents, bouton visible ; planche `v3-matrice-themes.png`), ainsi que le basculement par le bouton.
+- Contrastes réels mesurés dans le navigateur sur les 5 pages dans les deux thèmes (`scripts/contrast_check.js`) : 0 texte sous 4,5:1 (minimum mesuré : 4,97:1 en sombre, 5,80:1 en clair).
+- Captures v3 (accueil et fiche Dori, bureau et téléphone, clair et sombre, comparaisons maquette | réalisé) dans `docs/design/captures/v3-*`, et contrôle des 3 marchés témoins (Dori, Ouagadougou‑Sankaryare, Ouahigouya) face à PostgreSQL.
+
 ### Ajouté
 - Marchés voisins : « relevé ancien » quand le dernier relevé a plus de 6 mois.
 - « Ce qui s'est passé » : « Aucune alerte depuis [mois année] » quand la dernière alerte a plus de 12 mois.

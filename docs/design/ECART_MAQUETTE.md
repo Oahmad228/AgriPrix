@@ -1,6 +1,6 @@
 # Écart entre la maquette v2 et le tableau de bord Streamlit
 
-Référence : `docs/design/maquette-v2/export/` (SPEC.md, accueil.png, fiche-marche.png, mobile.png). État mesuré le 2026-11-18 sur la branche `ux/identite-visuelle`, Streamlit 1.67.0, Plotly 5.24.1. Comparaisons côte à côte : `docs/design/captures/v2-comparaison-{accueil,fiche,mobile}.png`.
+Référence : `docs/design/maquette-v2/export/` (SPEC.md, accueil.png, fiche-marche.png, mobile.png). État mesuré le 2026-11-18 sur la branche `ux/identite-visuelle`, puis revérifié après refonte sombre sur `ux/correctifs-sombre`, Streamlit 1.67.0, Plotly 5.24.1. Comparaisons côte à côte : `docs/design/captures/v3-comparaison-{accueil,fiche,mobile}.png`, `v3-sombre-comparaison-{accueil,fiche,mobile}.png` et planche `v3-matrice-themes.png`.
 
 ## Ce que Streamlit 1.67 permet (vérifié dans le conteneur)
 
