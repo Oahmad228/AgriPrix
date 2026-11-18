@@ -57,6 +57,13 @@ def pages() -> list:
     ]
 
 
+LOADING_HTML = (
+    '<div class="ap-loading" role="status" aria-live="polite"><b>Chargement des données…</b> '
+    "Après une période sans visite, le service se réveille : cela peut prendre jusqu'à une "
+    "minute.</div>"
+)
+
+
 def theme_button(theme: str) -> None:
     """Light/dark switch: a real button (44 px), pinned in the header band by CSS.
 
@@ -83,10 +90,16 @@ def main() -> None:
     page = st.navigation(pages(), position="top")
     restore_params()
     theme_button(theme)
+    # Shown at once, before the first API call: after a quiet period the free API host
+    # sleeps and takes up to about a minute to answer, which used to leave a blank page.
+    loading = st.empty()
+    loading.markdown(LOADING_HTML, unsafe_allow_html=True)
     try:
         page.run()
     except ApiError as exc:
         st.error(f"{exc} Les données s'afficheront dès que le service sera de nouveau disponible.")
+    finally:
+        loading.empty()
 
 
 if __name__ == "__main__":  # pragma: no cover

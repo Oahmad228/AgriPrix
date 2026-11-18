@@ -2,7 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les dates sont celles de la fusion dans `main`.
 
-## [Non publié] — branche `ux/correctifs-sombre`
+## [Non publié] — branche `ux/legende-chargement`
+
+### Corrigé
+- Légende du graphique de la fiche (et du graphique des modèles) jamais coupée : ancrée en bas du cadre, sur ordinateur comme sur téléphone.
+- Bouton « Mode sombre / Mode clair » placé à gauche de la barre d'outils de Streamlit Cloud (« Share »…) au lieu de la recouvrir.
+
+### Ajouté
+- « Chargement des données… » affiché tout de suite au réveil du service, au lieu d'une page vide.
+
+## [Publié] — `ux/correctifs-sombre`, fusionné le 2026-11-18
 
 ### Corrigé
 - Mélange de thèmes (en-tête clair sur fond sombre, onglets illisibles, bouton invisible) : sur Streamlit Community Cloud l'application tourne dans un cadre (`/~/+/`) et le script de thème lisait la page extérieure, donc la mémoire de thème de Streamlit n'était jamais corrigée. Le thème est maintenant décidé à un seul endroit (adresse, puis dernier choix du bouton, puis système), appliqué à Streamlit, à la page, à la carte, aux graphiques et au logo ; le menu ⋮ de thème de Streamlit est masqué.

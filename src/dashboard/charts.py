@@ -189,17 +189,18 @@ def price_figure(
         fig.add_vline(x=origin, line={"color": c["AXIS"], "width": 1, "dash": "dot"})
 
     ticks = _date_ticks(start, end)
-    two_lines = "ticktext" in ticks  # month over year: push the legend below both lines
     fig.update_layout(
-        height=440 if two_lines else 420,
-        margin={"l": 8, "r": 8, "t": 8, "b": 8},
+        # The legend (6 entries) wraps onto up to 5 lines on a phone: it sits at the bottom
+        # of the figure frame (yref "container") in a reserved margin, never cut off.
+        height=500,
+        margin={"l": 8, "r": 8, "t": 8, "b": 130},
         paper_bgcolor=c["BG_BLOCK"],
         plot_bgcolor=c["BG_BLOCK"],
         font={"family": FONT, "color": c["INK"], "size": 13},
         separators=", ",
         hovermode="closest",
         hoverlabel={"font": {"family": FONT}},
-        legend={"orientation": "h", "yanchor": "top", "y": -0.17 if two_lines else -0.08,
+        legend={"orientation": "h", "yref": "container", "yanchor": "bottom", "y": 0.01,
                 "x": 0, "font": {"size": 12}},
         # Explicit date axis: the legend-only trace of the season bands has no x data, and
         # Plotly would otherwise infer a numeric axis from it and hide every price.
@@ -238,10 +239,10 @@ def gain_figure(rows: list[dict], theme: str | None = None) -> go.Figure:
         )  # fmt: skip
     fig.add_hline(y=0, line={"color": c["INK"], "width": 1})
     fig.update_layout(
-        barmode="group", height=340, margin={"l": 8, "r": 8, "t": 8, "b": 8},
+        barmode="group", height=380, margin={"l": 8, "r": 8, "t": 8, "b": 90},
         paper_bgcolor=c["BG_BLOCK"], plot_bgcolor=c["BG_BLOCK"], separators=", ",
         font={"family": FONT, "color": c["INK"], "size": 13},
-        legend={"orientation": "h", "yanchor": "top", "y": -0.12, "x": 0},
+        legend={"orientation": "h", "yref": "container", "yanchor": "bottom", "y": 0.01, "x": 0},
         yaxis={"title": {"text": "écart d'erreur vs « dernier prix connu » (%)", "font": {"size": 12}},
                "gridcolor": c["GRID"], "zeroline": False},
     )  # fmt: skip
