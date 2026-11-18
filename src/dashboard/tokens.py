@@ -51,27 +51,42 @@ MIN_BRAND_ALERT_DE = 20.0
 TEXT_NAMES = ("INK", "TEXT_MUTED", "LINK", "AXIS", "ALERT_UP", "ALERT_DOWN", "SELECT")
 GRAPHIC_NAMES = ("FORECAST", "BRAND", "NORMAL")
 ROLE_NAMES = (*TEXT_NAMES, *GRAPHIC_NAMES, "BG", "BG_SOFT", "BORDER", "GRID", "SELECT_TEXT",
-              "FORECAST_FAN", "SEASON", "SEASON_OPACITY", "SEASON_TAG_BG", "MAP_STYLE",
-              "MARKER_FILL")  # fmt: skip
+              "FORECAST_FAN", "SEASON", "SEASON_OPACITY", "SEASON_TAG_BG", "SEASON_TAG_TEXT",
+              "MAP_STYLE", "MARKER_FILL", "BG_BLOCK", "HEADER_BG", "HEADER_RULE",
+              "SELECT_BORDER", "LINK_HOVER", "TAB_ACTIVE_BG", "TAB_ACTIVE_TEXT")  # fmt: skip
 MAP_STYLE = "open-street-map"  # OSM tiles
 MARKER_FILL = "#FFFFFF"  # inside of a normal market marker
+SEASON_TAG_TEXT = INK
+BG_BLOCK = BG  # framed blocks
+HEADER_BG = BG
+HEADER_RULE = BRAND  # thin rule under the header
+SELECT_BORDER = SELECT
+LINK_HOVER = LINK
+TAB_ACTIVE_BG = ""  # light mode keeps Streamlit's own active tab
+TAB_ACTIVE_TEXT = ""
 
 LIGHT = {name: globals()[name] for name in ROLE_NAMES}
 
-# --- Dark mode: the same logo, read at night ---------------------------------------------
-# Background from the iris navy, text in the cream of the light mode's soft background,
-# the logo's leaf, teal and ochre brightened until they read on it. Alerts keep their
-# meaning (red = rise, slate = fall) in lighter tints; the brand accent becomes the wheat
-# ochre, far from the alert red (dE2000 26.8).
+# --- Dark mode: the validated dark mockup, values of SPEC.md "Mode sombre", as given ------
+# (docs/design/maquette-v2/export/*-sombre.png). A value may only change in lightness, and
+# only if its measured contrast is below WCAG AA (tests/unit/test_tokens.py).
 DARK = {
-    "INK": "#F3EFE6", "TEXT_MUTED": "#BDBACB", "AXIS": "#A9AABF",
-    "BG": "#13162B", "BG_SOFT": "#1C2040", "BORDER": "#353A60", "GRID": "#262A49",
-    "SELECT": "#8CC152", "SELECT_TEXT": "#13162B",
-    "FORECAST": "#6CC3BF", "FORECAST_FAN": "rgba(108, 195, 191, 0.22)", "LINK": "#8DD3CF",
-    "SEASON": "#DA9435", "SEASON_OPACITY": 0.13, "SEASON_TAG_BG": "#4E3814",
-    "BRAND": "#E39A3B", "ALERT_UP": "#FF7B72", "ALERT_DOWN": "#9DAACB", "NORMAL": "#9A9EB8",
+    "BG": "#111A16", "BG_BLOCK": "#18231E", "BG_SOFT": "#1E2B25",
+    "HEADER_BG": "#16211C", "HEADER_RULE": "#2B3A32",
+    "INK": "#E6EDE9", "TEXT_MUTED": "#AEBAB3", "AXIS": "#9AA79F",
+    "BORDER": "#33423A", "GRID": "#27342D",
+    "SELECT": "#2E7D62", "SELECT_BORDER": "#3F8F70", "SELECT_TEXT": "#FFFFFF",
+    "TAB_ACTIVE_BG": "#E9C46A", "TAB_ACTIVE_TEXT": "#1E2B24",
+    "SEASON": "#E9C46A", "SEASON_OPACITY": 0.13,
+    "SEASON_TAG_BG": "#E9C46A", "SEASON_TAG_TEXT": "#1E2B24",
+    "FORECAST": "#62AEDB", "FORECAST_FAN": "rgba(98, 174, 219, 0.20)",
+    "LINK": "#86C6EC", "LINK_HOVER": "#B3DCF3",
+    "ALERT_UP": "#F0837B", "ALERT_DOWN": "#A9B6C9",
+    # Not in the SPEC table: normal market outline (neutral grey of the mockup's markers)
+    # and the brand accent (the mockup has no rust in dark mode: same as the header rule).
+    "NORMAL": "#9AA79F", "BRAND": "#2B3A32",
     # Dark basemap: OpenStreetMap data drawn by CARTO ("Dark Matter"), no key.
-    "MAP_STYLE": "carto-darkmatter", "MARKER_FILL": "#13162B",
+    "MAP_STYLE": "carto-darkmatter", "MARKER_FILL": "#111A16",
 }  # fmt: skip
 THEMES = {"light": LIGHT, "dark": DARK}
 

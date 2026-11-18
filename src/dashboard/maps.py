@@ -22,9 +22,10 @@ INK, ALERT_UP, ALERT_DOWN, NORMAL = tk.INK, tk.ALERT_UP, tk.ALERT_DOWN, tk.NORMA
 FONT = "Public Sans, system-ui, sans-serif"
 STATES = {
     # state: (legend words, symbol in labels, colour, marker size)
-    "UP": ("▲ Hausse anormale", "▲", ALERT_UP, 16),
-    "DOWN": ("▼ Baisse anormale", "▼", ALERT_DOWN, 16),
-    "NORMAL": ("○ Prix dans la normale", "○", NORMAL, 10),
+    # Alerts: large solid dots in the state colour; normal: small hollow grey ring.
+    "UP": ("▲ Hausse anormale", "▲", ALERT_UP, 18),
+    "DOWN": ("▼ Baisse anormale", "▼", ALERT_DOWN, 18),
+    "NORMAL": ("○ Prix dans la normale", "○", NORMAL, 9),
 }
 
 
@@ -42,6 +43,8 @@ ATTRIBUTION = (
     "ou ODbL selon le pays) · positions des marchés : WFP"
 )
 NATIONAL_ONLY = {"MAR": "Indice national des prix alimentaires"}
+# Decision on Western Sahara pending (Ahmad): borders unchanged, this note under every map.
+BORDERS_NOTE = "Les frontières affichées n'impliquent aucune prise de position."
 # The mouse wheel scrolls the page (it would otherwise be trapped by the map): zoom with the
 # + / - buttons or a pinch on a touch screen; pan by dragging.
 CONFIG = {
@@ -89,6 +92,21 @@ def borders(iso3: str | None, theme: str | None = None) -> list[dict]:
             layers.append({"source": geo, "type": "line", "color": color,
                            "line": {"width": width}, "below": "traces"})  # fmt: skip
     return layers
+
+
+def fit_bounds(countries: list[str], points: list[dict]) -> list[float] | None:
+    """[min lon, min lat, max lon, max lat] the map must fill (country outlines, else markets).
+
+    The browser fits the map to it at its real size (MAP_SCRIPT in common.py, 5 % margin)."""
+    boxes = [b for b in (bounds(c) for c in countries) if b]
+    if not boxes and points:
+        lats = [p["latitude"] for p in points]
+        lons = [p["longitude"] for p in points]
+        boxes = [(min(lons), min(lats), max(lons), max(lats))]
+    if not boxes:
+        return None
+    return [round(min(b[0] for b in boxes), 4), round(min(b[1] for b in boxes), 4),
+            round(max(b[2] for b in boxes), 4), round(max(b[3] for b in boxes), 4)]  # fmt: skip
 
 
 def view(countries: list[str], points: list[dict]) -> tuple[dict, float]:
@@ -186,7 +204,7 @@ def market_map(
             fig.add_trace(go.Scattermap(lat=lat, lon=lon, mode="markers", name=words,
                                         marker={"size": size, "color": color}, **common))  # fmt: skip
             fig.add_trace(go.Scattermap(lat=lat, lon=lon, mode="markers", showlegend=False,
-                                        marker={"size": size - 4, "color": c["MARKER_FILL"]}, **common))  # fmt: skip
+                                        marker={"size": size - 3, "color": c["MARKER_FILL"]}, **common))  # fmt: skip
         else:
             fig.add_trace(go.Scattermap(
                 lat=lat, lon=lon, mode="markers+text", name=words,
@@ -197,7 +215,8 @@ def market_map(
                 textfont={"size": 13, "color": color, "family": "Open Sans Bold"},
                 **common,
             ))  # fmt: skip
-    center, zoom = view([selected] if selected else list(countries), points)
+    shown = [selected] if selected else list(countries)
+    center, zoom = view(shown, points)  # first view, before the browser fits the bounds
     fig.update_layout(
         map={"style": c["MAP_STYLE"], "center": center, "zoom": zoom,
              "layers": borders(selected, theme)},
@@ -205,7 +224,7 @@ def market_map(
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         legend={
             "orientation": "v", "yanchor": "top", "y": 0.99, "xanchor": "left", "x": 0.01,
-            "bgcolor": c["BG"], "bordercolor": c["BORDER"], "borderwidth": 1,
+            "bgcolor": c["BG_BLOCK"], "bordercolor": c["BORDER"], "borderwidth": 1,
             "font": {"family": FONT, "size": 13, "color": c["INK"]},
         },
         hoverlabel={"bgcolor": c["BG"], "bordercolor": c["BORDER"],
@@ -213,6 +232,7 @@ def market_map(
         font={"family": FONT},
         clickmode="event+select",
         dragmode="pan",
+        meta={"fit": fit_bounds(shown, points), "halo": c["BG_BLOCK"]},
     )  # fmt: skip
     return fig
 

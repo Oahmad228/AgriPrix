@@ -103,24 +103,29 @@ Fond `#FFFFFF`, fond doux crème `#F6F4EE`, bordures `#D9D6CC`, grilles `#ECEAE3
 
 ## Dark mode
 
-Le site suit le mode du système (`prefers-color-scheme`) ; le bouton « Mode sombre » / « Mode clair » de l'en-tête force un mode et l'écrit dans l'adresse (`&theme=sombre` ou `&theme=clair`), qui suit tous les liens. Mêmes contenus et mise en page, seules les couleurs changent. Les jetons sombres de la SPEC (base verte) sont harmonisés avec le logo, comme la SPEC le prévoit :
+**Reproduction exacte de la maquette sombre validée** (`docs/design/maquette-v2/export/*-sombre.png`), couleurs de la section « Mode sombre » de `SPEC.md` **telles quelles** : toutes passent le contraste AA mesuré, aucune n'a été ajustée. Le thème clair ne change pas.
 
-| Rôle | Clair | Sombre | Contraste sombre (fond / fond doux) |
-| --- | --- | --- | --- |
-| Fond de page / fond doux | `#FFFFFF` / `#F6F4EE` | `#13162B` / `#1C2040` (bleu nuit de l'iris) | — |
-| Encre | `#21254A` | `#F3EFE6` (crème) | 15,54 / 13,76 |
-| Texte secondaire / axes | `#4F536B` / `#5D6175` | `#BDBACB` / `#A9AABF` | 9,39 / 7,81 |
-| Bordures / grilles | `#D9D6CC` / `#ECEAE3` | `#353A60` / `#262A49` | — |
-| Sélection | `#3F6A1F` | `#8CC152` (feuille claire, texte bleu nuit 8,38) | 8,38 / 7,42 |
-| Prévision / liens | `#1E5066` | `#6CC3BF` / `#8DD3CF` (bleu-vert de l'iris) | 8,66 / 10,49 |
-| Soudure | ocre 22 % | ocre 13 % (valeur de la SPEC) | — |
-| Accent de marque | `#97570D` | `#E39A3B` (ocre des épis, ΔE2000 26,8 du rouge d'alerte) | 7,60 |
-| Hausse anormale | `#B3261E` | `#FF7B72` + ▲ + mot | 7,07 |
-| Baisse anormale | `#4A5568` | `#9DAACB` + ▼ + mot | 7,68 |
-| Fond de carte | OpenStreetMap | CARTO Dark Matter (données OpenStreetMap, « © CARTO » ajouté) | — |
-| Logo | logo tel quel (transparent) | version d'Ahmad à œil blanc, sans pastille | — |
+| Rôle | Sombre | Contraste mesuré |
+| --- | --- | --- |
+| Fond de page / blocs / fond doux | `#111A16` / `#18231E` / `#1E2B25` | — |
+| En-tête | `#16211C`, filet bas `#2B3A32` | encre 13,92 |
+| Encre | `#E6EDE9` | 14,92 (fond), 12,37 (fond doux) |
+| Texte secondaire / axes | `#AEBAB3` / `#9AA79F` | 7,34 / 5,89 au pire (fond doux) |
+| Bordures / grilles | `#33423A` / `#27342D` | décoratives |
+| Sélection (puce active) | `#2E7D62`, bordure `#3F8F70`, texte blanc | blanc sur vert 4,97 |
+| Onglet actif, étiquette soudure | paille `#E9C46A`, texte `#1E2B24` | 8,81 |
+| Soudure sur graphique | `#E9C46A` à 13 % | — |
+| Prévision | `#62AEDB` | 6,02 au pire |
+| Liens | `#86C6EC`, survol `#B3DCF3` | 7,92 / 10,12 au pire |
+| Hausse anormale | `#F0837B` + ▲ + mot | 5,77 au pire |
+| Baisse anormale | `#A9B6C9` + ▼ + mot | 7,16 au pire |
+| Marché normal | anneau gris `#9AA79F`, creux | — |
+| Carte | CARTO Dark Matter, « © OpenStreetMap contributors © CARTO » | — |
+| Logo | version d'Ahmad à œil blanc (en-tête et favicon) | — |
 
-Contraste et écart marque/alerte vérifiés par test dans les deux modes (`tests/unit/test_tokens.py`) ; deutéranopie simulée : `docs/design/captures/v2-sombre-daltonisme-deuteranopie.png`.
+### Un seul thème par page
+
+Le thème se décide à un seul endroit, dans cet ordre : 1. `?theme=sombre|clair` dans l'adresse ; 2. le dernier choix fait avec le bouton ; 3. la préférence du système. Le script de page (`THEME_SCRIPT`, `common.py`) applique ce choix à Streamlit (sa mémoire `stActiveTheme-<page>-v2`, toujours « Light » ou « Dark », jamais « System »), l'écrit dans un cookie lu par le serveur (`decide_theme`), et recharge une fois si l'un des deux n'était pas d'accord (au plus deux rechargements en 20 s). CSS, carte, graphiques et logo lisent ce même thème ; le menu ⋮ de Streamlit, qui permettait de changer de thème à part, est masqué. Vérifié sur les 18 combinaisons (système × adresse × mémoire Streamlit) : `docs/design/captures/v3-matrice-themes.png`.
 
 ## Typography
 

@@ -22,6 +22,7 @@ if _REPO_ROOT not in sys.path:
 from src.dashboard.client import ApiError  # noqa: E402
 from src.dashboard.common import (  # noqa: E402, F401  (re-exported for the tests)
     CSS,
+    MAP_SCRIPT,
     commodity_fr,
     css,
     current_theme,
@@ -77,8 +78,8 @@ def main() -> None:
     st.set_page_config(page_title="AgriPrix Observatory",
                        page_icon=str(BRAND / f"favicon-32{suffix}.png"), layout="wide")  # fmt: skip
     st.logo(str(BRAND / f"agriprix-lockup{suffix}.png"), size="large")
-    st.markdown(css(forced_theme()), unsafe_allow_html=True)
-    st.html(theme_script(forced_theme()), unsafe_allow_javascript=True)
+    st.markdown(css(theme), unsafe_allow_html=True)
+    st.html(theme_script(theme) + MAP_SCRIPT, unsafe_allow_javascript=True)
     page = st.navigation(pages(), position="top")
     restore_params()
     theme_button(theme)

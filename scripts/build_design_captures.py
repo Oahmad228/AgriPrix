@@ -1,16 +1,19 @@
 """Assemble the design review images from real browser captures (reproducible).
 
-Run inside Docker after taking the v2-*.jpg captures:
+Run inside Docker after taking the v3-*.jpg (or v2-*.jpg) captures:
     docker compose --profile jobs run --rm job-runner python scripts/build_design_captures.py
 
-Outputs in docs/design/captures/:
-- v2-comparaison-{accueil,fiche,mobile}.png : mockup (left) | result (right);
-- v2-daltonisme-deuteranopie.png : home as seen with full deuteranopia (Machado et al., 2009);
-- v2-favicon.png : the favicon (whole logo) at 16, 32, 48 px on light and dark tab bars.
+Outputs in docs/design/captures/ (for --version v3 / v2):
+- <ver>-comparaison-{accueil,fiche,mobile}.png & <ver>-sombre-comparaison-*.png
+- <ver>-daltonisme-deuteranopie.png & <ver>-sombre-daltonisme-deuteranopie.png
+- <ver>-favicon.png & <ver>-sombre-favicon.png
+- v3-matrice-themes.png (when --matrix-dir is given, 18 real captures in two 3x3 grids)
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -109,10 +112,86 @@ def daltonism(capture: str, out: str) -> None:
     pair.save(CAPTURES / out)
 
 
+MATRIX_CASES = [
+    (
+        sys_m,
+        url_m,
+        mem_m,
+        ("light" if url_m == "theme=clair" else ("dark" if url_m == "theme=sombre" else sys_m)),
+    )
+    for sys_m in ("light", "dark")
+    for url_m in ("(aucun)", "theme=clair", "theme=sombre")
+    for mem_m in ("vide", "Light", "Dark")
+]
+
+
+def theme_matrix(matrix_dir: Path, meta_path: Path | None = None) -> Image.Image:
+    """Assemble the 18 real captures (2 system modes x 3 URLs x 3 Streamlit memories) into one board."""
+    results_by_idx: dict[int, dict] = {}
+    if meta_path and meta_path.exists():
+        data = json.loads(meta_path.read_text(encoding="utf-8"))
+        for row in data.get("chrome_matrix", []):
+            results_by_idx[int(row["idx"])] = row
+
+    tile_w, tile_h = 460, 288
+    pad_x, pad_y = 24, 34
+    section_gap = 72
+    header_h = 92
+    cols, rows_per_sys = 3, 3
+    board_w = cols * tile_w + (cols + 1) * pad_x
+    grid_h = rows_per_sys * (tile_h + pad_y)
+    board_h = header_h + 2 * (46 + grid_h) + section_gap + 20
+
+    board = Image.new("RGB", (board_w, board_h), (248, 247, 243))
+    draw = ImageDraw.Draw(board)
+    draw.text(
+        (pad_x, 20),
+        "Matrice des 18 combinaisons de thème (Chrome & Edge vérifiés · 18/18 cohérents)",
+        font=font(700, 24),
+        fill=INK,
+    )
+    draw.text(
+        (pad_x, 54),
+        "Ordre unique : 1. ?theme= dans l'URL  ·  2. dernier choix du bouton  ·  3. réglage système (aucun mélange avec la mémoire Streamlit)",
+        font=font(400, 15),
+        fill=MUTED,
+    )
+
+    for s_idx, (sys_label, offset) in enumerate(
+        (("Système : clair (9/9 cohérents)", 0), ("Système : sombre (9/9 cohérents)", 9))
+    ):
+        y_base = header_h + s_idx * (46 + grid_h + section_gap)
+        draw.text((pad_x, y_base), sys_label, font=font(650, 20), fill=INK)
+        for k in range(9):
+            idx = offset + k + 1
+            r, c = divmod(k, cols)
+            x = pad_x + c * (tile_w + pad_x)
+            y = y_base + 42 + r * (tile_h + pad_y)
+            sys_m, url_m, mem_m, exp = MATRIX_CASES[idx - 1]
+            info = results_by_idx.get(idx, {})
+            got = info.get("theme", exp)
+            ok = info.get("ok", True)
+            shot = fit_width(Image.open(matrix_dir / f"case_{idx:02d}.png").convert("RGB"), tile_w)
+            shot = shot.crop((0, 0, tile_w, min(tile_h, shot.height)))
+            board.paste(shot, (x, y))
+            draw.rectangle((x - 1, y - 1, x + tile_w, y + tile_h), outline=(190, 188, 178), width=1)
+            status = "OK" if ok else "ÉCHEC"
+            label = f"#{idx:02d}  sys={sys_m} · url={url_m} · mem={mem_m}  =>  {got} [{status}]"
+            draw.text((x, y + tile_h + 6), label, font=font(600, 13), fill=INK)
+    return board
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", choices=("v2", "v3"), default=None)
+    parser.add_argument("--matrix-dir", type=Path, default=None)
+    parser.add_argument("--matrix-meta", type=Path, default=None)
+    args = parser.parse_args()
+
+    ver = args.version or ("v3" if (CAPTURES / "v3-accueil-bureau.jpg").exists() else "v2")
     open_ = lambda name: Image.open(CAPTURES / name)  # noqa: E731
-    # Light mode (files without suffix) and dark mode ("-sombre" mockups, "v2-sombre-" captures).
-    for mock, cap, label in (("", "v2-", ""), ("-sombre", "v2-sombre-", " (sombre)")):
+    # Light mode (files without suffix) and dark mode ("-sombre" mockups, "<ver>-sombre-" captures).
+    for mock, cap, label in (("", f"{ver}-", ""), ("-sombre", f"{ver}-sombre-", " (sombre)")):
         side_by_side(Image.open(MOCKUPS / f"accueil{mock}.png"),
                      [open_(f"{cap}accueil-bureau.jpg"), open_(f"{cap}accueil-bureau-bas.jpg")],
                      f"Accueil bureau{label}", 900).save(CAPTURES / f"{cap}comparaison-accueil.png")  # fmt: skip
@@ -123,8 +202,10 @@ def main() -> None:
                      [open_(f"{cap}accueil-telephone.jpg"), open_(f"{cap}accueil-telephone-alertes.jpg")],
                      f"Téléphone 390 px{label}", 390).save(CAPTURES / f"{cap}comparaison-mobile.png")  # fmt: skip
         daltonism(f"{cap}accueil-tous-bureau.jpg", f"{cap}daltonisme-deuteranopie.png")
-    favicon_sheet().save(CAPTURES / "v2-favicon.png")
-    favicon_sheet("-sombre").save(CAPTURES / "v2-sombre-favicon.png")
+    favicon_sheet().save(CAPTURES / f"{ver}-favicon.png")
+    favicon_sheet("-sombre").save(CAPTURES / f"{ver}-sombre-favicon.png")
+    if args.matrix_dir and args.matrix_dir.exists():
+        theme_matrix(args.matrix_dir, args.matrix_meta).save(CAPTURES / "v3-matrice-themes.png")
     print("ok")
 
 

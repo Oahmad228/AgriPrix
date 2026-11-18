@@ -2,6 +2,30 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les dates sont celles de la fusion dans `main`.
 
+## [Non publié] — branche `ux/correctifs-sombre`
+
+### Corrigé
+- Mélange de thèmes (en-tête clair sur fond sombre, onglets illisibles, bouton invisible) : sur Streamlit Community Cloud l'application tourne dans un cadre (`/~/+/`) et le script de thème lisait la page extérieure, donc la mémoire de thème de Streamlit n'était jamais corrigée. Le thème est maintenant décidé à un seul endroit (adresse, puis dernier choix du bouton, puis système), appliqué à Streamlit, à la page, à la carte, aux graphiques et au logo ; le menu ⋮ de thème de Streamlit est masqué.
+- Carte cadrée sur le pays choisi (marge 5 %) à sa taille réelle, sur ordinateur comme sur téléphone.
+- Étiquettes de la carte avec un halo, placées à côté de leur point.
+- Marché normal en anneau gris creux, marché en alerte en point plein deux fois plus gros.
+- Moins d'espace sous l'en-tête.
+
+### Modifié
+- Mode sombre refait à l'identique de la maquette sombre validée (couleurs de `SPEC.md` telles quelles, toutes conformes AA).
+
+### Vérifié
+- Cohérence du thème sur les 18 combinaisons (système × URL × mémoire Streamlit) vérifiée dans Chrome et Edge (18/18 cohérents, bouton visible ; planche `v3-matrice-themes.png`), ainsi que le basculement par le bouton.
+- Contrastes réels mesurés dans le navigateur sur les 5 pages dans les deux thèmes (`scripts/contrast_check.js`) : 0 texte sous 4,5:1 (minimum mesuré : 4,97:1 en sombre, 5,80:1 en clair).
+- Captures v3 (accueil et fiche Dori, bureau et téléphone, clair et sombre, comparaisons maquette | réalisé) dans `docs/design/captures/v3-*`, et contrôle des 3 marchés témoins (Dori, Ouagadougou‑Sankaryare, Ouahigouya) face à PostgreSQL.
+
+### Ajouté
+- Marchés voisins : « relevé ancien » quand le dernier relevé a plus de 6 mois.
+- « Ce qui s'est passé » : « Aucune alerte depuis [mois année] » quand la dernière alerte a plus de 12 mois.
+- Sous la carte : « Les frontières affichées n'impliquent aucune prise de position. »
+- Facteurs externes (pluie, récolte, carburant, exportations) : « En préparation », avec ce que chaque bloc montrera et sa source prévue, au lieu de « [à intégrer] » ; aucun chiffre affiché tant que la donnée n'est pas chargée et vérifiée.
+- Plus d'icône de lien à côté des titres.
+
 ## [Non publié] — branche `ux/identite-visuelle` (identité visuelle)
 
 ### Ajouté

@@ -1,6 +1,6 @@
 # Écart entre la maquette v2 et le tableau de bord Streamlit
 
-Référence : `docs/design/maquette-v2/export/` (SPEC.md, accueil.png, fiche-marche.png, mobile.png). État mesuré le 2026-11-18 sur la branche `ux/identite-visuelle`, Streamlit 1.67.0, Plotly 5.24.1. Comparaisons côte à côte : `docs/design/captures/v2-comparaison-{accueil,fiche,mobile}.png`.
+Référence : `docs/design/maquette-v2/export/` (SPEC.md, accueil.png, fiche-marche.png, mobile.png). État mesuré le 2026-11-18 sur la branche `ux/identite-visuelle`, puis revérifié après refonte sombre sur `ux/correctifs-sombre`, Streamlit 1.67.0, Plotly 5.24.1. Comparaisons côte à côte : `docs/design/captures/v3-comparaison-{accueil,fiche,mobile}.png`, `v3-sombre-comparaison-{accueil,fiche,mobile}.png` et planche `v3-matrice-themes.png`.
 
 ## Ce que Streamlit 1.67 permet (vérifié dans le conteneur)
 
@@ -41,17 +41,19 @@ Référence : `docs/design/maquette-v2/export/` (SPEC.md, accueil.png, fiche-mar
 | Formes | rayons 8/6/999, bordure 1 px, ni ombre ni dégradé | 6 px partout | oui | Fait par CSS (rayon des blocs et des puces). |
 | Couleurs | vert foncé + paille | vert foncé + paille | oui | Remplacées par la charte tirée du logo (DESIGN.md). |
 
-## Mode sombre (maquette `*-sombre.png`)
+## Mode sombre (maquette `*-sombre.png`, refait le 2026-11-18)
 
-| Élément | Maquette | Réalisé | Faisable en Streamlit ? | Comment / état |
-| --- | --- | --- | --- | --- |
-| Thème sombre | jetons sombres de la SPEC (base verte) | jetons harmonisés avec le logo (base bleu nuit) | oui | `[theme.light]` / `[theme.dark]` dans `config.toml`, sans `base` : le site suit le système. Comparaisons : `v2-sombre-comparaison-*.png`. |
-| Bouton clair/sombre dans l'en-tête | bouton | bouton réel, libellé, 44 px | approché | Streamlit n'a pas d'emplacement pour un bouton dans la barre du haut : le bouton est un vrai `st.button`, épinglé dans la bande de l'en-tête par CSS. |
-| Choix gardé dans l'URL | `&theme=sombre` | `&theme=sombre` / `&theme=clair`, gardé par tous les liens | oui, avec un script | Python ne peut pas imposer un mode au navigateur : un petit script écrit le choix là où Streamlit le garde (`localStorage`, clé `stActiveTheme-<page>-v2`, Streamlit 1.67) et recharge une fois. Clé interne de Streamlit : à revérifier à chaque mise à jour de Streamlit. |
-| Changement du mode du système page ouverte | — | suivi | oui | Styles de page instantanés (`prefers-color-scheme`) ; carte, graphiques et logo par rechargement automatique (la vue est dans l'URL). |
-| Carte sombre | fond sombre | CARTO Dark Matter (données OSM, « © CARTO » affiché) | oui | Sans clé, licence CARTO pour usage non commercial ; attribution visible. |
-| Graphique et légende | sombres | couleurs du thème (fond, encre, axes, soudure 13 %) | oui | Couleurs passées à Plotly depuis `tokens.palette("dark")`. |
-| Logo | — | version à œil blanc, sans pastille | oui | Lisible sur bleu nuit ; pastille non nécessaire. |
+| Élément | Maquette sombre | Réalisé | Écart restant et cause |
+| --- | --- | --- | --- |
+| Couleurs | SPEC « Mode sombre » | identiques, aucune retouche (toutes AA mesurées) | — |
+| En-tête | `#16211C`, filet `#2B3A32`, onglet actif paille | identique | Barre de navigation de Streamlit : la recherche n'y est pas (phase B). |
+| Barre pays/produit, puces | fond doux, puce active verte pleine | identique | Libellé « Pays » au-dessus des puces, pas à gauche (mise en page des widgets Streamlit). |
+| Blocs, tableaux, menus | `#18231E`, bordures `#33423A` | identique | Menus déroulants et tableaux interactifs : couleurs du thème Streamlit (mêmes valeurs). |
+| Carte | sombre (schéma dans la maquette) | vraie carte CARTO Dark Matter, crédit visible | La maquette dessine un pays schématique ; la vraie carte montre aussi les pays voisins. |
+| Marqueurs | anneaux gris, triangles ▲ ▼ | anneau gris creux / point plein coloré deux fois plus gros | Pas de triangles : la carte Plotly n'en dessine pas (phase B). Symbole et mot dans la légende, le survol et la liste. |
+| Graphique | fond du bloc, soudure paille 13 % | identique | — |
+| Bouton clair/sombre | (non dessiné dans la maquette) | dans l'en-tête, 44 px | Épinglé par CSS dans la bande de l'en-tête (pas d'emplacement prévu par Streamlit). |
+| Choix du thème | — | adresse, puis dernier choix du bouton, puis système | Repose sur la clé interne `stActiveTheme-<page>-v2` de Streamlit 1.67 : à revérifier à chaque mise à jour de Streamlit. |
 
 ## Reste pour la phase B (React + MapLibre), non commencée
 

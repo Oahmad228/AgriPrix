@@ -167,7 +167,7 @@ def test_home_answers_before_any_click(monkeypatch) -> None:
     # Alert block: market, symbol and deviation, sentence with the expected level.
     assert "300 XOF/kg, alors qu'environ 240 étaient attendus pour la saison." in text
     assert "▲ +25 %" in text and "en période de soudure" in text
-    assert text.count("[à intégrer]") == 4  # outside factors are never invented
+    assert text.count("En préparation") >= 4 and "[à" not in text  # no value invented, no brackets
     assert "Plus fortes variations attendues dans 3 mois" in " ".join(
         h.value for h in page.subheader
     )
@@ -247,7 +247,7 @@ def test_dark_mode_chosen_in_the_url_is_kept(monkeypatch) -> None:
     assert _param(page, "theme") == "sombre"  # survives the URL rewrite of the view
     assert [b.label for b in page.button if b.key == "theme_btn"] == ["Mode clair"]
     styles = " ".join(m.value for m in page.markdown)
-    assert "#13162B" in styles and "prefers-color-scheme" not in styles  # forced: one palette
+    assert "#18231E" in styles and "prefers-color-scheme" not in styles  # dark palette (SPEC)
     page.button(key="theme_btn").click().run()
     assert _param(page, "theme") == "clair"
 
@@ -257,4 +257,35 @@ def test_system_mode_by_default(monkeypatch) -> None:
     assert "theme" not in page.query_params
     assert [b.label for b in page.button if b.key == "theme_btn"] == ["Mode sombre"]
     styles = " ".join(m.value for m in page.markdown)
-    assert "@media (prefers-color-scheme: dark)" in styles  # both palettes, system decides
+    assert "#F6F4EE" in styles and "#18231E" not in styles  # outside a browser: light
+
+
+@pytest.mark.parametrize(
+    ("url", "cookie", "streamlit_kind", "expected"),
+    [
+        # 1. The URL wins over everything, including a contrary cookie or Streamlit memory.
+        ("sombre", "light", "light", "dark"),
+        ("clair", "dark", "dark", "light"),
+        # 2. Without URL: the cookie (last button choice, else the system, set by the script).
+        (None, "dark", "light", "dark"),
+        (None, "light", "dark", "light"),
+        # 3. First visit, no cookie yet: Streamlit's guess (the script reloads if it is wrong).
+        (None, None, "dark", "dark"),
+        (None, None, None, "light"),
+        ("nonsense", "garbage", None, "light"),
+    ],
+)
+def test_one_theme_decision(url, cookie, streamlit_kind, expected) -> None:
+    from src.dashboard.common import decide_theme
+
+    assert decide_theme(url, cookie, streamlit_kind) == expected
+
+
+def test_theme_script_targets_the_app_document() -> None:
+    from src.dashboard.common import THEME_COOKIE, theme_script
+
+    script = theme_script("dark")
+    assert "window.parent" not in script  # Streamlit Cloud runs the app in an iframe
+    assert '"System"' not in script.split("wantedSt")[1].split(";")[0]  # never "System"
+    assert THEME_COOKIE in script and 'const server = "dark"' in script
+    assert "recent.length < 2" in script  # no reload loop
