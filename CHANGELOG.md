@@ -5,7 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les
 ## [Non publié] — branche `ux/identite-visuelle` (identité visuelle)
 
 ### Ajouté
-- Logo : versions transparente, carrées, horizontale, en-tête, favicons et icônes, toutes tirées du logo complet par `scripts/build_logo_assets.py` ; `docs/design/logo/LOGO.md`.
+- Logo : versions transparente, carrées, horizontale, en-tête, favicons et icônes, toutes tirées du logo complet, utilisé tel quel (transparence d'origine), par `scripts/build_logo_assets.py` ; `docs/design/logo/LOGO.md`.
 - Charte de couleurs mesurée sur le logo, dans un seul fichier de jetons (`src/dashboard/tokens.py`), avec tests de contraste WCAG AA et d'écart entre l'accent de marque et le rouge d'alerte.
 - Site en pages : Ce mois-ci, Marchés (fiche), Facteurs, Fiabilité, Données & API, avec un en-tête clair et le logo.
 - Accueil selon la maquette v2 : puces de pays, carte et alertes côte à côte, facteurs « [à intégrer] », plus fortes variations attendues.

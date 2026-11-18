@@ -1,38 +1,38 @@
 [
   {
-    "hex": "#DA9435",
-    "share_pct": 23.4
+    "hex": "#DB9433",
+    "share_pct": 22.8
   },
   {
-    "hex": "#A53F12",
+    "hex": "#A63E11",
+    "share_pct": 17.0
+  },
+  {
+    "hex": "#1E4F66",
+    "share_pct": 17.0
+  },
+  {
+    "hex": "#20254A",
     "share_pct": 16.5
   },
   {
-    "hex": "#1E5066",
-    "share_pct": 15.6
-  },
-  {
-    "hex": "#21254A",
-    "share_pct": 15.5
-  },
-  {
-    "hex": "#69913B",
-    "share_pct": 7.9
-  },
-  {
-    "hex": "#D3622C",
-    "share_pct": 7.6
-  },
-  {
-    "hex": "#BB7716",
+    "hex": "#D5622A",
     "share_pct": 7.5
   },
   {
-    "hex": "#529492",
-    "share_pct": 3.4
+    "hex": "#BC7714",
+    "share_pct": 7.2
   },
   {
-    "hex": "#D7BA95",
-    "share_pct": 2.6
+    "hex": "#5D833D",
+    "share_pct": 5.5
+  },
+  {
+    "hex": "#4F9592",
+    "share_pct": 3.8
+  },
+  {
+    "hex": "#7DA735",
+    "share_pct": 2.7
   }
 ]

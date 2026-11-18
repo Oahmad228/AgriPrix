@@ -59,3 +59,13 @@ def test_icons_are_the_whole_logo_never_a_cut_out() -> None:
         # The whole logo is scaled, not cropped: its width fills the square.
         xs = np.nonzero(np.asarray(icon)[..., 3].max(axis=0) > 8)[0]
         assert xs.max() - xs.min() + 1 >= 0.85 * size  # only the 4 % margin around it
+
+
+def test_a_transparent_source_is_used_as_given(tmp_path, monkeypatch) -> None:
+    """Ahmad's logo already has its transparency: it is used directly, nothing is added."""
+    rgba = np.zeros((40, 40, 4), dtype=np.uint8)
+    rgba[10:30, 10:30] = (33, 37, 74, 255)
+    source = tmp_path / "source.png"
+    Image.fromarray(rgba, "RGBA").save(source)
+    monkeypatch.setattr(logo, "SOURCE", source)
+    assert np.array_equal(np.asarray(logo.prepared_logo()), rgba)

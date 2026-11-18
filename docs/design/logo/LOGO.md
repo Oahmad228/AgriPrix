@@ -13,7 +13,7 @@ docker compose --profile jobs run --rm job-runner python scripts/build_logo_asse
 | Fichier | Usage |
 | --- | --- |
 | `agriprix-logo-source.png` | Source (2000 × 2000 px), à ne pas modifier |
-| `agriprix-logo.png` | Logo seul, fond transparent à l'extérieur, recadré avec 4 % de marge |
+| `agriprix-logo.png` | Logo tel quel (transparence d'origine), recadré avec 4 % de marge |
 | `agriprix-logo-1024.png`, `-512.png`, `-256.png` | Mêmes, en carré |
 | `agriprix-logo-horizontal.png` | Logo + « AgriPrix » (Public Sans 700) + « Observatoire des prix agricoles » (400) : README, documents |
 | `agriprix-lockup.png` | Logo + « AgriPrix », sans sous-titre : en-tête du site (44 px de haut) |
@@ -27,11 +27,7 @@ docker compose --profile jobs run --rm job-runner python scripts/build_logo_asse
 
 ## Transparence
 
-Le fichier reçu avait déjà un fond transparent partout, y compris dans le blanc de l'œil. Le script le pose sur du blanc, puis ne rend transparent que le blanc relié à l'extérieur. Un remplissage simple depuis les bords entrerait dans l'œil par ses coins, donc :
-- les petites fentes du contour sont fermées par un disque de 16 px ;
-- les coins de l'œil sont fermés par un disque de 28 px, seulement dans une ellipse de 1,5 × 1,2 rayon d'iris autour de l'iris (détecté automatiquement par ses pixels bleu nuit).
-
-Le blanc de l'œil reste blanc et opaque, et les couleurs ne changent pas.
+**Le logo est utilisé directement, tel qu'Ahmad l'a fourni** (décision du 2026-11-18) : le fichier source est déjà transparent, y compris à l'intérieur de l'œil, et le script ne fait que le recadrer et le redimensionner. Une première version remettait du blanc dans l'œil ; elle faisait une tache blanche sur un onglet sombre et a été abandonnée. Le script garde une méthode de détourage (`transparent_logo`) pour le cas d'une source sur fond blanc.
 
 ## Zone de protection et taille
 

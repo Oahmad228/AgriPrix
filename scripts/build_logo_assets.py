@@ -53,6 +53,16 @@ def load_source() -> Image.Image:
     return image.convert("RGB")
 
 
+def prepared_logo() -> Image.Image:
+    """The logo exactly as Ahmad gave it when it already has transparency (decision of
+    2026-11-18: use the logo directly, no white added inside the eye). Only a source on a
+    white background goes through transparent_logo()."""
+    image = Image.open(SOURCE)
+    if image.mode == "RGBA" and image.getchannel("A").getextrema()[0] < 255:
+        return image.copy()
+    return transparent_logo(load_source())
+
+
 def silhouette(white: np.ndarray, radius: int) -> np.ndarray:
     """Shapes closed with a disc of `radius` px, then holes filled: a flood fill from the
     border that cannot leak through gaps narrower than 2 x radius."""
@@ -175,8 +185,7 @@ def palette(logo: Image.Image, clusters: int = 9) -> list[dict]:
 def main() -> None:
     STATIC.mkdir(parents=True, exist_ok=True)
     CAPTURES.mkdir(parents=True, exist_ok=True)
-    source = load_source()
-    logo = crop(transparent_logo(source))
+    logo = crop(prepared_logo())
     logo.save(LOGO_DIR / "agriprix-logo.png", optimize=True)
     for size in (1024, 512, 256):
         square(logo, size).save(LOGO_DIR / f"agriprix-logo-{size}.png", optimize=True)
