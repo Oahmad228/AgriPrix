@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, make_url, text
 from sqlalchemy.exc import SQLAlchemyError
 from src.api.db import check_database_readonly_connection
 from src.api.main import app
@@ -29,7 +29,22 @@ def test_settings_urls_and_cors() -> None:
     assert "writer_u:pw1@db:5432/agriprix_dw" in cfg.writer_database_url
     assert "ro_u:pw2@db:5432/agriprix_dw" in cfg.readonly_database_url
     assert cfg.cors_origin_list == ["http://localhost:8501", "http://dashboard:8501"]
+    assert "sslmode" not in cfg.writer_database_url
     assert get_settings().dw_db == "agriprix_dw"
+
+
+def test_settings_url_for_managed_database() -> None:
+    """A managed database (Neon) needs TLS, and generated passwords may contain / + = @."""
+    cfg = Settings(
+        postgres_host="ep-x.neon.tech",
+        dw_readonly_user="ro_u",
+        dw_readonly_password="a/b+c=@d",
+        postgres_sslmode="require",
+    )
+    url = make_url(cfg.readonly_database_url)
+    assert url.password == "a/b+c=@d"
+    assert url.host == "ep-x.neon.tech"
+    assert url.query["sslmode"] == "require"
 
 
 def test_api_health_endpoint() -> None:

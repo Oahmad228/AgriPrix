@@ -66,6 +66,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="AgriPrix monthly refresh")
     parser.add_argument("--force-train", action="store_true")
     parser.add_argument("--no-mlflow", action="store_true")
+    parser.add_argument(
+        "--keep-campaigns",
+        type=int,
+        default=0,
+        help="after a new campaign, keep the rows of only the N most recent ones (0 = keep all)",
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=get_settings().log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -74,10 +80,13 @@ def main(argv: list[str] | None = None) -> int:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
     from src.etl.db import make_writer_engine
+    from src.ops.retention import prune_old_campaigns
 
     engine = make_writer_engine()
     try:
         outcome = run_refresh(engine, force_train=args.force_train, use_mlflow=not args.no_mlflow)
+        if outcome.training_run_id and args.keep_campaigns:
+            prune_old_campaigns(engine, keep=args.keep_campaigns)
     finally:
         engine.dispose()
     trained = (

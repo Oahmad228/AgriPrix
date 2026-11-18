@@ -53,3 +53,14 @@ La CI construit les 4 images de production pour `linux/arm64` (émulation QEMU) 
 - **Pas de sauvegarde automatique** de la base : les données sont rechargeables depuis les sources publiques, mais l'historique des campagnes serait perdu (piste : `pg_dump` hebdomadaire).
 - Les anciennes campagnes s'accumulent (environ 23 000 alertes et 37 000 métriques par campagne) : une règle de rétention reste à définir.
 - La répétition locale utilise un certificat interne de Caddy (non reconnu par les navigateurs). Le certificat Let's Encrypt réel n'a pas encore été obtenu, faute de serveur.
+
+## 5. Mise à jour du 2026-11-15 : obtention du serveur
+
+| Piste | Résultat constaté | Suite |
+| :--- | :--- | :--- |
+| Oracle Always Free, région Maroc Ouest (Casablanca, un seul domaine de disponibilité) | `Out of host capacity` pour `VM.Standard.A1.Flex`, en 2 OCPU / 12 Go comme en 1 OCPU / 6 Go | Relance automatique (`deploy/oci/retry.sh`) : **64 tentatives sans succès** entre 13:48 et 20:38 UTC le 2026-11-15 (`docker logs agriprix-oci-retry`) |
+| Oracle, passage en paiement à l'usage (*Pay As You Go*) | Demande d'une autorisation bancaire de 93 € | Refusé par Ahmad |
+| Azure for Students | Abonnement expiré | Écarté |
+| AWS, nouveau compte | « Not eligible for the free plan » : informations associées à un compte existant ; le plan payant n'est **pas** confirmé | Dossier au support AWS n° 179474668600527, en attente. Coût estimé du plan payant (t4g.small à Paris, disque 20 Go, IPv4 publique) : environ 18 à 20 $ par mois, estimation d'après les tarifs publics, non mesurée |
+
+Décision : rester sur Oracle Always Free tant que la relance automatique tourne, et basculer sur AWS seulement si le support accorde le plan gratuit ou si Ahmad accepte le coût mensuel. La configuration (Caddy, images ARM, `deploy.sh`) est la même dans les deux cas : seule l'architecture change sur AWS si une instance x86 est choisie.
