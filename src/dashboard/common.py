@@ -501,6 +501,8 @@ def _rules(c: dict) -> str:
   .ap-alert p {{ margin: .15rem 0; }}
   .ap-factor-label {{ color: {c["TEXT_MUTED"]}; font-size: .9rem; margin: 0; }}
   .ap-factor-value {{ font-size: 1.25rem; font-weight: 650; margin: .1rem 0; }}
+  .ap-loading {{ background: {c["BG_SOFT"]}; border: 1px solid {c["BORDER"]}; border-radius: 8px;
+                 padding: .8rem 1rem; margin: .5rem 0 1rem; }}
   .ap-soon {{ display: inline-block; border: 1px solid {c["BORDER"]}; border-radius: 999px;
               padding: 0 .55rem; color: {c["TEXT_MUTED"]}; font-size: .8rem; }}
   .ap-factor-what {{ font-size: .92rem; margin: .25rem 0; }}

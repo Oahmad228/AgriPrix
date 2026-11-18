@@ -289,3 +289,18 @@ def test_theme_script_targets_the_app_document() -> None:
     assert '"System"' not in script.split("wantedSt")[1].split(";")[0]  # never "System"
     assert THEME_COOKIE in script and 'const server = "dark"' in script
     assert "recent.length < 2" in script  # no reload loop
+
+
+def test_loading_message_is_removed_once_the_page_is_drawn(monkeypatch) -> None:
+    from src.dashboard.app import LOADING_HTML
+
+    assert "Chargement des données" in LOADING_HTML and 'role="status"' in LOADING_HTML
+    page = _page(monkeypatch)
+    assert not page.exception
+    assert "Chargement des données" not in " ".join(m.value for m in page.markdown)
+
+
+def test_chart_legend_sits_in_a_reserved_bottom_margin() -> None:
+    fig = charts.price_figure(_history(), [ALERT], FORECASTS, "KG", "XOF", "06,07,08,09")
+    assert fig.layout.legend.yref == "container" and fig.layout.legend.yanchor == "bottom"
+    assert fig.layout.margin.b >= 120  # room for the legend wrapped on a phone
