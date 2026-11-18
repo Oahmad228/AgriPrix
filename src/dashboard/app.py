@@ -20,8 +20,10 @@ _REPO_ROOT = str(Path(__file__).resolve().parents[2])
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.dashboard import charts, client  # noqa: E402
+from src.dashboard import charts, client, maps, reading  # noqa: E402
 from src.dashboard.client import ApiError  # noqa: E402
+
+PERIODS = {"1an": ("1 an", 1), "5ans": ("5 ans", 5), "tout": ("Tout", None)}
 
 GROUP_FR = {
     "Rice": "Riz", "Millet": "Mil", "Sorghum": "Sorgho", "Maize": "Maïs", "Beans": "Niébé",
@@ -58,8 +60,10 @@ REASON_FR = {
     "ANNUAL_FREQUENCY": "c'est une série annuelle",
 }
 MODEL_FR = {
-    "Naive": "Dernier prix connu", "SeasonalNaive": "Même mois l'an passé",
-    "Ridge_Seasonal": "Ridge saisonnier", "LightGBM_Global": "LightGBM (global)",
+    "Naive": "Dernier prix connu (persistance)",
+    "SeasonalNaive": "Même mois l'an passé (saisonnier naïf)",
+    "Ridge_Seasonal": "Tendance et saison par marché (régression Ridge)",
+    "LightGBM_Global": "Modèle appris sur tous les marchés (LightGBM)",
 }  # fmt: skip
 WINDOWS = {
     "TEST_W3_25_26": "Test final : sept. 2025 → août 2026",
@@ -76,6 +80,14 @@ CSS = """
                background: rgba(233, 196, 106, .45); font-size: .85rem; }
   .ap-note { color: #4E5A53; font-size: .92rem; max-width: 75ch; }
   section[data-testid="stSidebar"] .ap-note { color: #D8E3DD; }
+  .ap-lead { font-size: 1.08rem; line-height: 1.55; max-width: 70ch; margin: .2rem 0 .6rem; }
+  .ap-badge { display: inline-block; padding: .1rem .55rem; border: 1px solid #D6DDD8;
+              border-radius: .25rem; font-size: .9rem; white-space: nowrap; }
+  .ap-bias { color: #4E5A53; font-size: .92rem; max-width: 75ch; }
+  /* Alert rows are buttons: whole row clickable, 44 px touch target, left-aligned text. */
+  .st-key-alerts button { width: 100%; min-height: 44px; justify-content: flex-start;
+                           text-align: left; font-variant-numeric: tabular-nums; }
+  .st-key-alerts button p { text-align: left; }
 </style>
 """
 
@@ -106,13 +118,52 @@ def recent_since(country: dict) -> str:
     return (latest - pd.DateOffset(months=2)).date().isoformat()
 
 
-def default_focus(country_code: str, group: str) -> int | None:
-    """Open the chart on the market of the most recent, strongest alert, if any."""
-    country = next(c for c in client.countries() if c["country_iso3"] == country_code)
+def latest_alerts(country: dict, group: str) -> dict[int, dict]:
+    """Most recent alert of each series over the last three months (strongest if tied)."""
     items = client.anomalies(
-        country=country_code, commodity_group=group, since=recent_since(country)
+        country=country["country_iso3"], commodity_group=group, since=recent_since(country)
     )["items"]
-    return items[0]["series_id"] if items else None
+    ordered = sorted(items, key=lambda a: (a["period"], abs(a["deviation_pct"])), reverse=True)
+    best: dict[int, dict] = {}
+    for a in ordered:
+        best.setdefault(a["series_id"], {**a, "month_label": _month(a["period"])})
+    return best
+
+
+def default_focus(country: dict, group: str) -> int | None:
+    """Open the sheet on the market of the strongest recent alert, if any."""
+    alerts = latest_alerts(country, group)
+    if not alerts:
+        return None
+    return max(alerts.values(), key=lambda a: abs(a["deviation_pct"]))["series_id"]
+
+
+def _param(name: str) -> str | None:
+    value = st.query_params.get(name)
+    return value if value else None
+
+
+def _index(options: list, wanted: object, fallback: object = None) -> int:
+    for candidate in (wanted, fallback):
+        if candidate in options:
+            return options.index(candidate)
+    return 0
+
+
+def focus(series_id: int) -> None:
+    """Open a market sheet: the URL is the single source of truth for the selected market."""
+    if _param("marche") != str(series_id):
+        st.query_params["marche"] = str(series_id)
+        st.rerun()
+
+
+def share_state(country: str, group: str, series_id: int | None, horizon: int, period: str) -> None:
+    """Every view has its own URL: country, staple, market, horizon and period."""
+    wanted = {"pays": country, "produit": group, "horizon": str(horizon), "periode": period}
+    if series_id is not None:
+        wanted["marche"] = str(series_id)
+    if {k: st.query_params.get(k) for k in wanted} != wanted:
+        st.query_params.update(wanted)
 
 
 def sidebar() -> tuple[dict, str, dict | None]:
@@ -128,26 +179,34 @@ def sidebar() -> tuple[dict, str, dict | None]:
     names = {c["country_iso3"]: c["country_name_fr"] for c in countries}
     codes = list(names)
     country_code = st.sidebar.selectbox(
-        "Pays", codes, index=codes.index("BFA") if "BFA" in codes else 0, format_func=names.get
+        "Pays", codes, index=_index(codes, _param("pays"), "BFA"), format_func=names.get
     )
     country = next(c for c in countries if c["country_iso3"] == country_code)
 
     groups = sorted({c["commodity_group"] for c in client.commodities(country_code)},
                     key=lambda g: GROUP_FR.get(g, g))  # fmt: skip
-    group = st.sidebar.selectbox("Produit", groups, format_func=lambda g: GROUP_FR.get(g, g))
+    group = st.sidebar.selectbox(
+        "Produit", groups, index=_index(groups, _param("produit")),
+        format_func=lambda g: GROUP_FR.get(g, g),
+    )  # fmt: skip
 
     candidates = client.series(country_code, group)
     selected = None
     if candidates:
+        several = len({c["commodity_name_en"] for c in candidates}) > 1
         labels = {
             s["series_id"]: f"{s['market_name']} — {commodity_fr(s['commodity_name_en'])}"
-            if len({c['commodity_name_en'] for c in candidates}) > 1 else s["market_name"]
+            if several else s["market_name"]
             for s in candidates
         }  # fmt: skip
         ids = sorted(labels, key=lambda i: labels[i])
-        wanted = st.session_state.get("focus_series") or default_focus(country_code, group)
-        index = ids.index(wanted) if wanted in ids else 0
-        series_id = st.sidebar.selectbox("Marché", ids, index=index, format_func=labels.get)
+        raw = _param("marche")
+        wanted = int(raw) if raw and raw.isdigit() else None
+        if wanted not in ids:
+            wanted = default_focus(country, group)
+        series_id = st.sidebar.selectbox(
+            "Marché", ids, index=_index(ids, wanted), format_func=labels.get
+        )
         selected = next(s for s in candidates if s["series_id"] == series_id)
 
     st.sidebar.markdown(
@@ -161,94 +220,195 @@ def sidebar() -> tuple[dict, str, dict | None]:
     return country, group, selected
 
 
-def alerts_table(country: dict, group: str) -> None:
+def _price(value: float, unit: str) -> str:
+    return f"{reading.fr_number(value)} {unit}"
+
+
+def _hover(s: dict, unit: str, alert: dict | None, fc: dict | None) -> str:
+    words = maps.STATES[alert["direction"] if alert else "NORMAL"][0]
+    lines = [f"<b>{s['market_name']}</b> — {commodity_fr(s['commodity_name_en']).lower()}"]
+    if s.get("last_value") is not None:
+        lines.append(
+            f"Dernier prix : {_price(s['last_value'], unit)} ({_month(s['last_obs_date'])})"
+        )
+    else:
+        lines.append("Pas de relevé de terrain récent")
+    if alert:
+        lines.append(
+            f"{words} : {_pct(alert['deviation_pct'])} par rapport au niveau habituel "
+            f"({alert['month_label']})"
+        )
+    else:
+        lines.append(f"{words} (aucune alerte ces trois derniers mois)")
+    if fc:
+        lines.append(
+            f"Dans 3 mois ({_month(fc['target_period'])}) : environ {_price(fc['yhat'], unit)}, "
+            f"entre {reading.fr_number(fc['lower_80'])} et {reading.fr_number(fc['upper_80'])}"
+        )
+        rel = reading.reliability(fc["test_picp_80"])
+        if rel:
+            lines.append(f"{rel.label} ({rel.detail})")
+    else:
+        lines.append("Pas de prévision pour ce marché")
+    lines.append("<i>Cliquer pour ouvrir la fiche</i>")
+    return "<br>".join(lines)
+
+
+def market_points(
+    country: dict, group: str, alerts: dict[int, dict]
+) -> tuple[list[dict], list[str]]:
+    """One point per market at its WFP coordinates; returns (points, markets without them)."""
+    iso3 = country["country_iso3"]
+    coords = {m["market_code"]: m for m in client.markets(iso3)}
+    forecasts = {
+        f["series_id"]: f
+        for f in client.forecasts(country=iso3, commodity_group=group, horizon=3)["items"]
+    }
+    by_market: dict[str, list[dict]] = {}
+    for s in client.series(iso3, group):
+        if s["granularity_level"] == "MARKET":
+            by_market.setdefault(s["market_code"], []).append(s)
+
+    points, missing = [], []
+    for code, series in by_market.items():
+        place = coords.get(code)
+        if not place or place["latitude"] is None or place["longitude"] is None:
+            missing.append(series[0]["market_name"])
+            continue
+        # Representative series: the alerting one, else the most recent forecast one.
+        alerting = [s for s in series if s["series_id"] in alerts]
+        if alerting:
+            s = max(alerting, key=lambda x: abs(alerts[x["series_id"]]["deviation_pct"]))
+        else:
+            s = max(series, key=lambda x: (x["series_id"] in forecasts, x["last_obs_date"] or ""))
+        unit = charts.unit_label(s["unit_measure"], s["currency_code"])
+        alert = alerts.get(s["series_id"])
+        state = alert["direction"] if alert else "NORMAL"
+        label = s["market_name"]
+        if alert:
+            word = "hausse" if state == "UP" else "baisse"
+            label = f"{s['market_name']} : {word} {_pct(alert['deviation_pct'])}"
+        points.append(
+            {
+                "series_id": s["series_id"], "latitude": place["latitude"],
+                "longitude": place["longitude"], "state": state, "label": label,
+                "hover": _hover(s, unit, alert, forecasts.get(s["series_id"])),
+            }
+        )  # fmt: skip
+    return points, sorted(missing)
+
+
+def map_block(country: dict, group: str, alerts: dict[int, dict]) -> None:
+    points, missing = market_points(country, group, alerts)
+    if not points:
+        st.markdown('<p class="ap-note">Aucun marché localisé pour ce produit.</p>',
+                    unsafe_allow_html=True)  # fmt: skip
+        return
+    key = f"map_{country['country_iso3']}_{group}"
+    event = st.plotly_chart(
+        maps.market_map(points, country["country_iso3"], height=440),
+        key=key, on_select="rerun", selection_mode="points", width="stretch",
+        config={"displayModeBar": False, "scrollZoom": True, "locale": "fr"},
+    )  # fmt: skip
+    chosen = None
+    for point in event.selection.points if event and event.selection else []:
+        data = point.get("customdata")
+        if data:
+            chosen = int(data[0] if isinstance(data, list) else data)
+            break
+    # A selection persists across reruns: act only when it changes.
+    if chosen != st.session_state.get(f"{key}_done"):
+        st.session_state[f"{key}_done"] = chosen
+        if chosen is not None:
+            focus(chosen)
+    note = f"{len(points)} marchés placés aux coordonnées publiées par le WFP."
+    if missing:
+        note += (
+            f" {len(missing)} marché(s) sans coordonnées publiées ne sont pas sur la carte : "
+            + ", ".join(missing)
+            + "."
+        )
+    st.markdown(f'<p class="ap-note">{note}<br>{maps.ATTRIBUTION}.</p>', unsafe_allow_html=True)
+
+
+def alerts_list(country: dict, group: str, alerts: dict[int, dict]) -> None:
     latest = pd.Timestamp(country["max_observed_date"])
     since = recent_since(country)
-    body = client.anomalies(country=country["country_iso3"], commodity_group=group, since=since)
-    label = GROUP_FR.get(group, group).lower()
-    st.markdown(f"### Alertes des trois derniers mois — {label}, {country['country_name_fr']}")
-    if not body["items"]:
+    st.markdown("#### Alertes récentes")
+    if not alerts:
         st.markdown(
             f'<p class="ap-note">Aucune alerte entre {_month(since)} et {_month(latest)} : '
-            "les prix relevés restent dans leur plage habituelle pour la saison. "
-            "Choisissez un autre produit, ou consultez l'historique du marché ci-dessous.</p>",
+            "les prix relevés restent dans leur plage habituelle pour la saison.</p>",
             unsafe_allow_html=True,
         )
         return
     lean = country["lean_season_months"]
-    candidates = client.series(country["country_iso3"], group)
-    currency = candidates[0]["currency_code"] if candidates else "XOF"
-    rows = []
-    for a in body["items"]:
-        period = pd.Timestamp(a["period"]).date()
-        rows.append(
-            {
-                "series_id": a["series_id"],
-                "Marché": a["market_name"],
-                "Écart": a["deviation_pct"],
-                "Sens": "Hausse" if a["direction"] == "UP" else "Baisse",
-                "Gravité": "forte" if a["severity"] == "CRITICAL" else "modérée",
-                "Mois": charts.month_label(period),
-                "Soudure": "oui" if charts.in_lean_season(period, lean) else "non",
-                "Produit": commodity_fr(a["commodity_name_en"]),
-                "Prix relevé": a["observed_value"],
-                "Niveau attendu": a["expected_value"],
-            }
-        )
-    frame = pd.DataFrame(rows)
+    ordered = sorted(alerts.values(), key=lambda a: abs(a["deviation_pct"]), reverse=True)
     st.markdown(
-        f'<p class="ap-note">{body["total"]} alerte(s). Une alerte signale un prix éloigné de son niveau '
-        "attendu compte tenu de la tendance de l'année écoulée et de la saison. "
-        "Sélectionnez une ligne pour afficher ce marché.</p>",
+        f'<p class="ap-note">{len(ordered)} marché(s) en alerte entre {_month(since)} et '
+        f"{_month(latest)}. Une alerte signale un prix éloigné de son niveau habituel pour la "
+        "saison. Touchez une ligne pour ouvrir la fiche du marché.</p>",
         unsafe_allow_html=True,
     )
-    event = st.dataframe(
-        frame.drop(columns="series_id"),
-        hide_index=True,
-        width="stretch",
-        on_select="rerun",
-        selection_mode="single-row",
-        column_config={
-            "Prix relevé": st.column_config.NumberColumn(format=number_format(currency)),
-            "Niveau attendu": st.column_config.NumberColumn(format=number_format(currency)),
-            "Écart": st.column_config.NumberColumn(format="%+.0f %%"),
-        },
-        height=min(38 + 35 * len(frame), 320),
+    with st.container(key="alerts"):
+        for a in ordered:
+            period = pd.Timestamp(a["period"]).date()
+            word = "▲ Hausse" if a["direction"] == "UP" else "▼ Baisse"
+            strength = "forte" if a["severity"] == "CRITICAL" else "modérée"
+            season = " · soudure" if charts.in_lean_season(period, lean) else ""
+            text = (
+                f"{word} {_pct(a['deviation_pct'])} · {a['market_name']} · "
+                f"{a['month_label']}{season} · alerte {strength}"
+            )
+            if st.button(text, key=f"alert_{a['series_id']}", width="stretch"):
+                focus(a["series_id"])
+
+
+def situation_tab(country: dict, group: str, selected: dict | None, horizon: int) -> str:
+    alerts = latest_alerts(country, group)
+    st.markdown(
+        f"### {GROUP_FR.get(group, group)}, {country['country_name_fr']} : "
+        "où les prix s'écartent-ils de la normale ?"
     )
-    picked = event.selection.rows if event and event.selection else []
-    if picked:
-        sid = int(frame.iloc[picked[0]]["series_id"])
-        if st.session_state.get("focus_series") != sid:
-            st.session_state["focus_series"] = sid
-            st.rerun()
+    left, right = st.columns([3, 2], gap="medium")
+    with left:
+        map_block(country, group, alerts)
+    with right:
+        alerts_list(country, group, alerts)
+    return market_view(country, selected, alerts, horizon)
 
 
-def market_view(country: dict, selected: dict | None) -> None:
-    if selected is None:
-        st.info("Aucune série de prix de détail pour ce produit dans ce pays.")
-        return
-    commodity = commodity_fr(selected["commodity_name_en"])
-    st.markdown(f"### {commodity} à {selected['market_name']}")
-    hist = client.history(selected["series_id"])
-    if not hist["observations"]:
-        st.info("Cette série ne contient encore aucun relevé.")
-        return
-    alerts = client.anomalies(series_id=selected["series_id"])["items"]
-    forecast_items = []
-    if selected["is_ml_eligible"]:
-        forecast_items = client.forecasts(series_id=selected["series_id"])["items"]
-    fig = charts.price_figure(
-        hist["observations"], alerts, forecast_items, selected["unit_measure"],
-        selected["currency_code"], country["lean_season_months"],
-    )  # fmt: skip
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "locale": "fr"})
+def _last_observed(observations: list[dict]) -> tuple[float | None, str]:
+    measured = [o for o in observations if o["is_observed"]]
+    if not measured:
+        return None, "—"
+    last = max(measured, key=lambda o: o["period"])
+    return last["value"], _month(last["period"])
 
-    if not forecast_items:
-        reason = REASON_FR.get(selected.get("ineligibility_reason") or "", "données insuffisantes")
-        st.markdown(f'<p class="ap-note">Pas de prévision pour cette série : {reason}.</p>',
-                    unsafe_allow_html=True)  # fmt: skip
+
+def _reading(selected: dict, hist: dict, alert: dict | None, chosen: dict | None,
+             unit_text: str, horizon: int) -> None:  # fmt: skip
+    """Summary sentence, reliability badge in words, bias sentence (a sentence before a number)."""
+    value, month = _last_observed(hist["observations"])
+    lead = reading.situation_sentence(value, unit_text, month, alert)
+    if chosen:
+        lead += " " + reading.forecast_sentence(chosen, unit_text, _month(chosen["target_period"]))
+    st.markdown(f'<p class="ap-lead">{lead}</p>', unsafe_allow_html=True)
+    if not chosen:
         return
-    unit, currency = selected["unit_measure"], selected["currency_code"]
+    rel = reading.reliability(chosen["test_picp_80"])
+    if rel:
+        st.markdown(
+            f'<p><span class="ap-badge">{rel.label}</span> '
+            f'<span class="ap-note">{rel.detail} à {horizon} mois (cible : 80).</span></p>',
+            unsafe_allow_html=True,
+        )
+    bias = reading.bias_sentence(chosen.get("recent_bias_pct"), horizon)
+    if bias:
+        st.markdown(f'<p class="ap-bias">{bias}</p>', unsafe_allow_html=True)
+
+
+def _forecast_table(forecast_items: list[dict], unit: str, currency: str) -> None:
     table = pd.DataFrame(
         {
             "Horizon": [f"{f['horizon_months']} mois" for f in forecast_items],
@@ -259,8 +419,8 @@ def market_view(country: dict, selected: dict | None) -> None:
                 f"{charts.fmt_value(f['upper_80'], unit, currency)}"
                 for f in forecast_items
             ],
-            "Couverture mesurée en test": [
-                "—" if f["test_picp_80"] is None else f"{100 * f['test_picp_80']:.0f} %"
+            "Fiabilité": [
+                r.label if (r := reading.reliability(f["test_picp_80"])) else "—"
                 for f in forecast_items
             ],
         }
@@ -268,16 +428,62 @@ def market_view(country: dict, selected: dict | None) -> None:
     st.dataframe(table, hide_index=True, width="stretch")
     st.markdown(
         '<p class="ap-note">La fourchette devrait contenir le vrai prix 8 fois sur 10. '
-        "La couverture mesurée dit ce qu'il en a été sur la période de test pour ce groupe de "
-        "marchés : en dessous de 80 %, la fourchette a été trop étroite. Voir l'onglet "
-        "« Méthode & qualité ».</p>",
+        "La fiabilité dit ce qu'il en a été sur la période de test pour ce groupe de marchés : "
+        "correcte à partir de 70 fois sur 100, moyenne de 50 à 69, faible en dessous. "
+        "Voir l'onglet « Méthode & qualité ».</p>",
         unsafe_allow_html=True,
     )
 
 
-def forecasts_tab(country: dict, group: str) -> None:
-    horizon = st.radio("Horizon", [1, 3, 6], index=1, horizontal=True,
-                       format_func=lambda h: f"{h} mois")  # fmt: skip
+def market_view(country: dict, selected: dict | None, alerts: dict[int, dict], horizon: int) -> str:
+    """Market sheet: the reading in words first, then the chart and the forecast table.
+
+    Returns the period key chosen for the chart (for the shareable URL).
+    """
+    period_keys = list(PERIODS)
+    period = _param("periode") if _param("periode") in PERIODS else "5ans"
+    if selected is None:
+        st.info("Aucune série de prix de détail pour ce produit dans ce pays.")
+        return period
+    with st.container(border=True):
+        commodity = commodity_fr(selected["commodity_name_en"])
+        st.markdown(f"### {commodity} à {selected['market_name']}")
+        hist = client.history(selected["series_id"])
+        if not hist["observations"]:
+            st.info("Cette série ne contient encore aucun relevé.")
+            return period
+        unit, currency = selected["unit_measure"], selected["currency_code"]
+        forecast_items = []
+        if selected["is_ml_eligible"]:
+            forecast_items = client.forecasts(series_id=selected["series_id"])["items"]
+        chosen = next((f for f in forecast_items if f["horizon_months"] == horizon), None)
+        _reading(selected, hist, alerts.get(selected["series_id"]), chosen,
+                 charts.unit_label(unit, currency), horizon)  # fmt: skip
+        if not forecast_items:
+            reason = REASON_FR.get(
+                selected.get("ineligibility_reason") or "", "données insuffisantes"
+            )
+            st.markdown(f'<p class="ap-note">Pas de prévision pour cette série : {reason}.</p>',
+                        unsafe_allow_html=True)  # fmt: skip
+
+        period = st.radio(
+            "Période affichée", period_keys, index=period_keys.index(period),
+            format_func=lambda k: PERIODS[k][0], horizontal=True, key="period_radio",
+        )  # fmt: skip
+        fig = charts.price_figure(
+            hist["observations"], client.anomalies(series_id=selected["series_id"])["items"],
+            forecast_items, unit, currency, country["lean_season_months"],
+            years=PERIODS[period][1],
+        )  # fmt: skip
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "locale": "fr"})
+        if forecast_items:
+            _forecast_table(forecast_items, unit, currency)
+    return period
+
+
+def forecasts_tab(country: dict, group: str, horizon: int) -> None:
+    st.radio("Horizon", [1, 3, 6], index=[1, 3, 6].index(horizon), horizontal=True,
+             format_func=lambda h: f"{h} mois", key="horizon_radio")  # fmt: skip
     body = client.forecasts(country=country["country_iso3"], commodity_group=group, horizon=horizon)
     if not body["items"]:
         st.markdown(
@@ -289,6 +495,7 @@ def forecasts_tab(country: dict, group: str) -> None:
     rows = []
     for f in body["items"]:
         last = f["last_value"]
+        rel = reading.reliability(f["test_picp_80"])
         rows.append(
             {
                 "Marché": f["market_name"],
@@ -299,6 +506,7 @@ def forecasts_tab(country: dict, group: str) -> None:
                 "Basse (80 %)": f["lower_80"],
                 "Haute (80 %)": f["upper_80"],
                 "Variation attendue": None if not last else (f["yhat"] / last - 1) * 100,
+                "Fiabilité": rel.label if rel else "—",
             }
         )
     frame = pd.DataFrame(rows).sort_values("Variation attendue", ascending=False)
@@ -339,14 +547,13 @@ def gain_summary(metrics: list[dict], window: str) -> str:
         if window.startswith("TEST")
         else "Cette période a servi à choisir les modèles."
     )
-    return (
-        "Chaque barre compare l'erreur d'un modèle à celle de la règle la plus simple : "
-        "« le prix restera le dernier prix connu » ; au-dessus de zéro, le modèle fait mieux. "
-        + role
-        + " Sur cette période, "
-        + " ; ".join(parts)
-        + "."
-    )
+    return role + " Sur cette période, " + " ; ".join(parts) + "."
+
+
+GAIN_INTRO = (
+    "Chaque barre compare l'erreur d'un modèle à celle de la règle la plus simple, "
+    "« le prix restera le dernier prix connu » : au-dessus de zéro, le modèle fait mieux."
+)
 
 
 def method_tab() -> None:
@@ -354,6 +561,7 @@ def method_tab() -> None:
     st.markdown("### Ce que valent les prévisions")
     window = st.radio("Période évaluée", list(WINDOWS), format_func=WINDOWS.get, horizontal=True)
     metrics = client.model_metrics(window)["items"]
+    st.markdown(f'<p class="ap-lead">{GAIN_INTRO}</p>', unsafe_allow_html=True)
     st.plotly_chart(charts.gain_figure(metrics), width="stretch",
                     config={"displayModeBar": False})  # fmt: skip
     st.markdown(f'<p class="ap-note">{gain_summary(metrics, window)}</p>', unsafe_allow_html=True)
@@ -401,16 +609,23 @@ def main() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
     try:
         country, group, selected = sidebar()
+        # The horizon radio lives in the second tab but the sheet of the first tab uses it:
+        # read its value (or the URL's) before any tab renders.
+        raw = _param("horizon")
+        horizon = st.session_state.get("horizon_radio", int(raw) if raw in ("1", "3", "6") else 3)
         situation, by_market, method = st.tabs(
             ["Situation", "Prévisions par marché", "Méthode & qualité"]
         )
         with situation:
-            alerts_table(country, group)
-            market_view(country, selected)
+            period = situation_tab(country, group, selected, horizon)
         with by_market:
-            forecasts_tab(country, group)
+            forecasts_tab(country, group, horizon)
         with method:
             method_tab()
+        share_state(
+            country["country_iso3"], group, selected["series_id"] if selected else None,
+            horizon, period,
+        )  # fmt: skip
     except ApiError as exc:
         st.error(f"{exc} Les données s'afficheront dès que le service sera de nouveau disponible.")
 

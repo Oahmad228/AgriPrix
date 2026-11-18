@@ -68,6 +68,12 @@ def series(
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+def markets(country: str) -> list[dict]:
+    """Markets of a country with the coordinates published by WFP (None when absent)."""
+    return _get("/api/v1/markets", {"country": country})
+
+
+@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 def history(series_id: int) -> dict:
     return _get(f"/api/v1/series/{series_id}/history")
 

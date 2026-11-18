@@ -74,7 +74,7 @@ def test_gain_summary_follows_the_numbers_of_the_selected_period() -> None:
     assert "n'a servi qu'à évaluer" in text
     better = [_metric("Ridge_Seasonal", 3, 7.6), _metric("LightGBM_Global", 3, 9.9)]
     text = gain_summary(better, "VAL_W1_2022")
-    assert "LightGBM (global)) fait mieux" in text and "10 % d'erreur en moins" in text
+    assert "(LightGBM)) fait mieux" in text and "10 % d'erreur en moins" in text
     assert "a servi à choisir" in text
 
 
@@ -98,14 +98,22 @@ def test_unreachable_api(monkeypatch) -> None:
     assert client.health()["status"] == "unreachable"
 
 
-SERIES = {"series_id": 1, "market_name": "Djibo", "commodity_name_en": "Millet", "unit_measure": "KG",
-          "currency_code": "XOF", "is_ml_eligible": True, "ineligibility_reason": None}  # fmt: skip
+SERIES = {"series_id": 1, "market_code": "BFA_1", "market_name": "Djibo", "commodity_name_en": "Millet",
+          "unit_measure": "KG", "currency_code": "XOF", "is_ml_eligible": True,
+          "ineligibility_reason": None, "granularity_level": "MARKET", "last_obs_date": "2025-12-01",
+          "last_value": 271.0}  # fmt: skip
+NO_GPS = {**SERIES, "series_id": 2, "market_code": "BFA_2", "market_name": "Sans-GPS",
+          "is_ml_eligible": False}  # fmt: skip
 FAKE_API = {
     "countries": lambda: [{"country_iso3": "BFA", "country_name_fr": "Burkina Faso",
                            "ml_eligible_series": 1, "max_observed_date": "2025-12-01",
                            "lean_season_months": "06,07,08,09"}],
     "commodities": lambda country: [{"commodity_group": "Millet"}],
-    "series": lambda country, group=None, frequency="MONTHLY": [SERIES],
+    "series": lambda country, group=None, frequency="MONTHLY": [SERIES, NO_GPS],
+    "markets": lambda country: [
+        {"market_code": "BFA_1", "market_name": "Djibo", "latitude": 14.1, "longitude": -1.6},
+        {"market_code": "BFA_2", "market_name": "Sans-GPS", "latitude": None, "longitude": None},
+    ],
     "history": lambda sid: {"observations": _history()},
     "forecasts": lambda **kw: {"items": FORECASTS, "data_until": "2025-12-01"},
     "anomalies": lambda **kw: {"items": [ALERT], "total": 1},
@@ -118,16 +126,32 @@ FAKE_API = {
 }  # fmt: skip
 
 
-def test_full_page_renders_alerts_chart_and_method(monkeypatch) -> None:
+def _page(monkeypatch, **params) -> AppTest:
     for name, fake in FAKE_API.items():
         monkeypatch.setattr(client, name, fake)
-    page = AppTest.from_file(APP, default_timeout=30).run()
+    page = AppTest.from_file(APP, default_timeout=30)
+    for key, value in params.items():
+        page.query_params[key] = value
+    return page.run()
+
+
+def test_full_page_renders_map_alerts_sheet_and_method(monkeypatch) -> None:
+    page = _page(monkeypatch)
     assert not page.exception
     text = " ".join(m.value for m in page.markdown)
-    assert "Alertes des trois derniers mois — mil, Burkina Faso" in text
+    assert "Mil, Burkina Faso : où les prix s'écartent-ils de la normale ?" in text
+    assert "1 marché(s) sans coordonnées publiées ne sont pas sur la carte : Sans-GPS." in text
+    assert "© contributeurs OpenStreetMap" in text
     assert "Mil à Djibo" in text
+    # Summary sentence and reliability badge in words (76 % coverage -> "correcte").
+    assert "En août 2025, il était 25 % au-dessus de son niveau habituel pour la saison" in text
+    assert "● Fiabilité correcte" in text
     assert "Campagne d'entraînement n° 6" in text
-    assert len(page.get("plotly_chart")) == 2  # price chart + model comparison
+    assert len(page.get("plotly_chart")) == 3  # map + price chart + model comparison
+    assert [b.label for b in page.button][0].startswith("▲ Hausse +25 % · Djibo")
+    # Every view has its own URL.
+    assert page.query_params["pays"] in ("BFA", ["BFA"])  # AppTest keeps a list per key
+    assert page.query_params["marche"] in ("1", ["1"])
     assert [t.label for t in page.tabs] == [
         "Situation",
         "Prévisions par marché",
@@ -143,3 +167,13 @@ def test_page_shows_a_clear_message_when_the_api_is_down(monkeypatch) -> None:
     page = AppTest.from_file(APP, default_timeout=30).run()
     assert not page.exception
     assert "ne répond pas" in page.error[0].value
+
+
+def test_url_restores_the_view_and_alert_rows_open_the_market(monkeypatch) -> None:
+    page = _page(monkeypatch, periode="1an", horizon="6", marche="2")
+    assert not page.exception
+    assert page.radio(key="period_radio").value == "1an"
+    assert "Mil à Sans-GPS" in " ".join(m.value for m in page.markdown)
+    page.button[0].click().run()
+    assert not page.exception
+    assert "Mil à Djibo" in " ".join(m.value for m in page.markdown)

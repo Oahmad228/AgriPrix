@@ -99,10 +99,13 @@ SERIES_SELECT = """
 SELECT s.series_id, s.country_iso3, s.market_code, m.market_name, s.commodity_code,
        c.commodity_name_en, c.commodity_group, s.price_type, s.unit_measure, s.currency_code,
        s.frequency, s.value_type, s.granularity_level, s.first_obs_date, s.last_obs_date,
-       s.is_ml_eligible, s.ineligibility_reason
+       s.is_ml_eligible, s.ineligibility_reason, last.observed_value AS last_value
 FROM dim_series_catalog s
 JOIN dim_market m USING (market_code)
 JOIN dim_commodity c USING (commodity_code)
+LEFT JOIN fact_price_observation last ON last.series_id = s.series_id
+ AND last.frequency = s.frequency AND last.is_observed
+ AND last.calendar_id = EXTRACT(YEAR FROM s.last_obs_date)::int * 100 + EXTRACT(MONTH FROM s.last_obs_date)::int
 """
 
 

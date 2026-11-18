@@ -78,7 +78,8 @@ components:
 - Ink `#1E2B24` on white `#FFFFFF`; notes `#4E5A53`; axis titles `#5B6660`; borders `#D6DDD8`; grid `#E6EBE7`; rail notes `#D8E3DD` on the green.
 
 ### Named Rules
-- **State colours carry meaning only**: red `#B3261E` = abnormal rise, slate `#4A5568` = abnormal fall, always paired with a shape (▲ / ▼) and words ("Hausse", "Baisse").
+- **State colours carry meaning only**: red `#B3261E` = abnormal rise, slate `#4A5568` = abnormal fall, always paired with a shape (▲ / ▼) and words ("Hausse", "Baisse"). On the map, MapLibre's fonts cannot draw ▲ / ▼: the map label carries the word and the sign ("Dori : hausse +32 %"), the legend, hover and alert list carry the symbol.
+- **Reliability in words**: the 80 % interval's coverage measured in test becomes "● Fiabilité correcte" (≥ 70 %), "◐ Fiabilité moyenne" (50-69 %), "○ Fiabilité faible" (< 50 %), always followed by "la fourchette a été juste N fois sur 100 en test". A recent median bias of 10 % or more either way adds one sentence under the forecast; the served forecast is never corrected.
 
 ## Typography
 
@@ -86,11 +87,11 @@ Public Sans (OFL, self-hosted in src/dashboard/static/fonts) for everything: one
 
 ## Layout
 
-Wide layout: green filter rail on the left (collapses on mobile), three tabs ("Situation", "Prévisions par marché", "Méthode & qualité"). The first tab opens on the alerts of the last three months, then the selected market's chart, then its forecast table. On narrow screens tables scroll inside their frame, with the deviation column placed right after the market name.
+Wide layout: green filter rail on the left (collapses on mobile), three tabs ("Situation", "Prévisions par marché", "Méthode & qualité"). The first tab opens on the market map (left) beside the clickable list of recent alerts (right; stacked on phones), then the selected market's sheet: summary sentence, reliability badge, bias sentence, period choice (1 an / 5 ans / tout), chart, forecast table. Every view has its own URL (`?pays=&produit=&marche=&horizon=&periode=`). On narrow screens tables scroll inside their frame, with the deviation column placed right after the market name.
 
 ## Elevation & Depth
 
-Flat: depth comes from the green rail against the white work area; no shadows, no cards.
+Flat: depth comes from the green rail against the white work area; no shadows. Sober framed blocks (1 px `#D6DDD8` border, 6 px radius, no fill, no shadow) group one object, such as the market sheet; never nested, never used as KPI tiles.
 
 ## Shapes
 
@@ -104,6 +105,12 @@ Streamlit tabs and select boxes, unmodified affordances.
 ### Season chart (signature)
 Plotly chart: observed prices as a 2 px ink line; aggregated or estimated values as hollow grey circles labelled "non mesurée"; alerts as ▲ / ▼ markers with a white outline; forecast as a dashed blue line from the last observed price with its 80 % fan; a dotted vertical line at the forecast origin; straw lean-season bands behind everything; explicit date axis; French separators (1 464,5).
 
+### Market map
+Plotly `Scattermap` (MapLibre) on OpenStreetMap tiles, no API key: one point per market at the WFP coordinates only (markets without coordinates are counted and named under the map), country outline 2 px ink and Burkina Faso regions 0.8 px grey from geoBoundaries (`src/dashboard/geo/SOURCES.md`), alerts larger and labelled, legend top-left, view fitted to the country, pan and scroll zoom. A click opens the market sheet and updates the URL. Visible credit: "© contributeurs OpenStreetMap".
+
+### Alert list
+One full-width button per alerting market (≥ 44 px high): "▲ Hausse +32 % · Dori · août 2026 · soudure · alerte forte", strongest first. A tap opens the market sheet.
+
 ### Tables
 Streamlit dataframes; prices rounded to whole XOF (one decimal for indices), deviations signed in percent.
 
@@ -116,5 +123,5 @@ Streamlit dataframes; prices rounded to whole XOF (one decimal for indices), dev
 
 ### Don't:
 - Use colour alone for a state, or a red/green pair.
-- Add KPI tiles, cards, gradients or decorative motion.
+- Add KPI tiles, decorative cards, nested frames, gradients or decorative motion.
 - Write a claim the API cannot back (no invented users, partners or accuracy figures).

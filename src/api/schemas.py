@@ -54,6 +54,9 @@ class Series(BaseModel):
     last_obs_date: date | None
     is_ml_eligible: bool
     ineligibility_reason: str | None
+    last_value: float | None = Field(
+        default=None, description="Observed value of the last month with a field observation"
+    )
 
 
 class Page(BaseModel):

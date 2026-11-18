@@ -68,6 +68,22 @@ def _season_bands(
     )  # fmt: skip
 
 
+def _date_ticks(start: pd.Timestamp, end: pd.Timestamp) -> dict:
+    """Fixed tick spacing: Plotly's automatic ticks kept a single year on narrow screens."""
+    span_years = (end - start).days / 365.25
+    if span_years <= 2:
+        # Explicit French labels: Plotly's French locale is not loaded inside Streamlit.
+        ticks = pd.date_range(pd.Timestamp(start.year, 1, 1), end, freq="QS")
+        ticks = ticks[ticks >= start]
+        return {
+            "tickmode": "array",
+            "tickvals": list(ticks),
+            "ticktext": [f"{MONTHS_FR[t.month - 1]}<br>{t.year}" for t in ticks],
+        }
+    step = 1 if span_years <= 8 else 2 if span_years <= 16 else 4
+    return {"dtick": f"M{12 * step}", "tick0": f"{start.year}-01-01", "tickformat": "%Y"}
+
+
 def price_figure(
     observations: list[dict],
     alerts: list[dict],
@@ -75,8 +91,9 @@ def price_figure(
     unit: str,
     currency: str,
     lean_spec: str | None,
-    years: int = 5,
+    years: int | None = 5,
 ) -> go.Figure:
+    """years: 1, 5 or None (whole history). Every year (or quarter on one year) is labelled."""
     obs = pd.DataFrame(observations)
     obs["period"] = pd.to_datetime(obs["period"])
     measured = obs[obs["is_observed"]]
@@ -86,7 +103,8 @@ def price_figure(
     end = obs["period"].max()
     if forecasts:
         end = max(end, pd.to_datetime(max(f["target_period"] for f in forecasts)))
-    start = max(obs["period"].min(), obs["period"].max() - pd.DateOffset(years=years))
+    first = obs["period"].min()
+    start = first if years is None else max(first, obs["period"].max() - pd.DateOffset(years=years))
 
     fig = go.Figure()
     _season_bands(fig, start, end, lean_months(lean_spec))
@@ -157,8 +175,10 @@ def price_figure(
         )  # fmt: skip
         fig.add_vline(x=origin, line={"color": MUTED, "width": 1, "dash": "dot"})
 
+    ticks = _date_ticks(start, end)
+    two_lines = "ticktext" in ticks  # month over year: push the legend below both lines
     fig.update_layout(
-        height=420,
+        height=440 if two_lines else 420,
         margin={"l": 8, "r": 8, "t": 8, "b": 8},
         paper_bgcolor="#FFFFFF",
         plot_bgcolor="#FFFFFF",
@@ -166,11 +186,12 @@ def price_figure(
         separators=", ",
         hovermode="closest",
         hoverlabel={"font": {"family": FONT}},
-        legend={"orientation": "h", "yanchor": "top", "y": -0.08, "x": 0, "font": {"size": 12}},
+        legend={"orientation": "h", "yanchor": "top", "y": -0.17 if two_lines else -0.08,
+                "x": 0, "font": {"size": 12}},
         # Explicit date axis: the legend-only trace of the season bands has no x data, and
         # Plotly would otherwise infer a numeric axis from it and hide every price.
         xaxis={"type": "date", "range": [start, end + pd.DateOffset(days=20)], "showgrid": False,
-               "linecolor": GRID, "tickformat": "%Y"},
+               "linecolor": GRID, **ticks},
         yaxis={"title": {"text": label, "font": {"size": 12, "color": MUTED}},
                "gridcolor": GRID, "zeroline": False, "tickformat": ",.0f"},
     )  # fmt: skip
@@ -183,7 +204,8 @@ def gain_figure(rows: list[dict]) -> go.Figure:
     # Only the learned models: "same month last year" is far worse at short horizons and would
     # crush the scale (its figures stay in the table below the chart).
     frame = frame[frame["model_name"].isin(["LightGBM_Global", "Ridge_Seasonal"])]
-    names = {"LightGBM_Global": "LightGBM (global)", "Ridge_Seasonal": "Ridge saisonnier",
+    names = {"LightGBM_Global": "Modèle appris sur tous les marchés (LightGBM)",
+             "Ridge_Seasonal": "Tendance et saison par marché (Ridge)",
              "SeasonalNaive": "Même mois l'an passé"}  # fmt: skip
     colours = {"LightGBM_Global": FORECAST, "Ridge_Seasonal": "#8A6D1F", "SeasonalNaive": MUTED}
     fig = go.Figure()
