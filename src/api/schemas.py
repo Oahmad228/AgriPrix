@@ -54,6 +54,9 @@ class Series(BaseModel):
     last_obs_date: date | None
     is_ml_eligible: bool
     ineligibility_reason: str | None
+    last_value: float | None = Field(
+        default=None, description="Observed value of the last month with a field observation"
+    )
 
 
 class Page(BaseModel):
@@ -96,8 +99,18 @@ class Forecast(BaseModel):
     upper_80: float
     model: str
     test_picp_80: float | None = Field(
-        description="Coverage of the 80 % interval measured on the final test window for this "
-        "group, model and horizon"
+        description="Coverage of the 80 % interval method measured out of sample on the final "
+        "test window (2025-09 to 2026-08), with intervals calibrated on the previous window "
+        "(2024-07 to 2025-06)"
+    )
+    recent_bias_pct: float | None = Field(
+        default=None,
+        description="Median recent error of this model on the interval's calibration window, "
+        "exp(median ln(actual / forecast)) - 1, in %: negative = the model over-estimated. "
+        "Information only: the forecast is not corrected.",
+    )
+    interval_method: str | None = Field(
+        default=None, description="log_symmetric (ADR-004 section 3) or signed_relative (v1.0)"
     )
 
 

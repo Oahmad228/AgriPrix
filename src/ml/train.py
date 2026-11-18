@@ -16,7 +16,13 @@ from src.anomaly.detector import alerts, load_scope, robust_scores
 from src.etl import db
 from src.ml import tracking
 from src.ml.data import Panel, calendar_id_of, load_panel
-from src.ml.evaluation import apply_interval, conformal_quantiles, select_champion
+from src.ml.evaluation import (
+    apply_log_interval,
+    log_conformal_radius,
+    log_errors,
+    median_bias,
+    select_champion,
+)
 from src.ml.features import build_supervised, seasonal_scale
 from src.ml.models import BASELINES, MODEL_NAMES, make_model
 from src.ml.windows import (
@@ -110,19 +116,40 @@ def backtest(panel: Panel) -> tuple[pd.DataFrame, SupervisedCache]:
 QUANTILE_KEYS = [*GROUP_KEYS, "model_name", "horizon_months"]
 
 
+INTERVAL_METHOD = "log_symmetric"  # ADR-004 section 3 (v1.0-baseline: "signed_relative")
+
+
 def _quantile_table(residual_rows: pd.DataFrame) -> pd.DataFrame:
-    """Conformal quantiles of relative errors per (country, group, model, horizon)."""
-    rel = (residual_rows["actual_value"] - residual_rows["prediction"]) / residual_rows[
-        "prediction"
-    ]
+    """Log-symmetric conformal radius and median bias per (country, group, model, horizon).
+
+    q_rel_10 / q_rel_90 keep their meaning (relative bounds around the forecast):
+    exp(-radius) - 1 and exp(+radius) - 1.
+    """
+    errs = pd.Series(
+        log_errors(residual_rows["actual_value"], residual_rows["prediction"]),
+        index=residual_rows.index,
+    )
     rows = []
-    for key, errors in rel.groupby([residual_rows[k] for k in QUANTILE_KEYS]):
-        q_low, q_high = conformal_quantiles(errors.to_numpy())
+    for key, errors in errs.groupby([residual_rows[k] for k in QUANTILE_KEYS]):
+        values = errors.dropna().to_numpy()
+        if values.size == 0:
+            continue
+        radius = log_conformal_radius(values)
         rows.append(
             dict(zip(QUANTILE_KEYS, key, strict=True))
-            | {"n_calibration_residuals": len(errors), "q_rel_10": q_low, "q_rel_90": q_high}
+            | {
+                "n_calibration_residuals": int(values.size),
+                "q_rel_10": float(np.expm1(-radius)),
+                "q_rel_90": float(np.expm1(radius)),
+                "median_log_error": median_bias(values),
+                "interval_method": INTERVAL_METHOD,
+            }
         )
     return pd.DataFrame(rows)
+
+
+def _radius(q_rel_90) -> np.ndarray:
+    return np.log1p(np.asarray(q_rel_90, dtype=float))
 
 
 def calibrate(predictions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -143,11 +170,7 @@ def calibrate(predictions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         on=[*QUANTILE_KEYS, "eval_window"],
         how="left",
     )
-    lower, upper = apply_interval(
-        merged["prediction"].to_numpy(),
-        merged["q_rel_10"].to_numpy(),
-        merged["q_rel_90"].to_numpy(),
-    )
+    lower, upper = apply_log_interval(merged["prediction"].to_numpy(), _radius(merged["q_rel_90"]))
     merged["lower_80"], merged["upper_80"] = lower, upper  # NaN where no calibration
     return merged.drop(columns=["q_rel_10", "q_rel_90"]), quantiles
 
@@ -267,11 +290,10 @@ def production_forecasts(
                 & (predictions["model_name"] == name)
                 & (predictions["horizon_months"] == horizon)
             ]
-            errors = (
-                (calib["actual_value"] - calib["prediction"]) / calib["prediction"]
-            ).to_numpy()
-            q_low, q_high = conformal_quantiles(errors)
-            lower, upper = apply_interval(point, q_low, q_high)
+            errors = log_errors(calib["actual_value"], calib["prediction"])
+            errors = errors[~np.isnan(errors)]
+            radius = log_conformal_radius(errors)
+            lower, upper = apply_log_interval(point, radius)
             quantile_rows.append(
                 {
                     "country_iso3": country,
@@ -281,8 +303,10 @@ def production_forecasts(
                     "eval_window": PROD_WINDOW,
                     "calibration_window": TEST_W3.name,
                     "n_calibration_residuals": len(errors),
-                    "q_rel_10": q_low,
-                    "q_rel_90": q_high,
+                    "q_rel_10": float(np.expm1(-radius)),
+                    "q_rel_90": float(np.expm1(radius)),
+                    "median_log_error": median_bias(errors),
+                    "interval_method": INTERVAL_METHOD,
                 }
             )
             forecasts.append(
@@ -430,6 +454,7 @@ def _write(engine: Engine, run_id: int, panel: Panel, result: TrainingResult, ru
         q_cols = [
             "country_iso3", "commodity_group", "model_name", "horizon_months", "eval_window",
             "calibration_window", "n_calibration_residuals", "q_rel_10", "q_rel_90",
+            "median_log_error", "interval_method",
         ]  # fmt: skip
         db.copy_rows(
             conn,

@@ -6,7 +6,16 @@ import numpy as np
 import pandas as pd
 import pytest
 from src.ml.data import Panel, calendar_id_of, month_index
-from src.ml.evaluation import apply_interval, conformal_quantiles, select_champion, series_metrics
+from src.ml.evaluation import (
+    apply_interval,
+    apply_log_interval,
+    conformal_quantiles,
+    log_conformal_radius,
+    log_errors,
+    median_bias,
+    select_champion,
+    series_metrics,
+)
 from src.ml.features import NUMERIC_FEATURES, build_supervised, seasonal_scale
 from src.ml.models import MODEL_NAMES, make_model
 from src.ml.train import _train_rows
@@ -147,6 +156,40 @@ def test_interval_lower_bound_never_negative() -> None:
     lower, upper = apply_interval(np.array([100.0]), -1.5, 0.2)
     assert lower[0] == 0.0
     assert upper[0] == pytest.approx(120.0)
+
+
+def test_log_radius_finite_sample_rank_and_symmetry() -> None:
+    errors = np.log(
+        np.array([0.5, 0.8, 0.9, 1.1, 1.25, 2.0])
+    )  # |ln| sorted: .105 .105 .223 .223 .693 .693
+    # n = 6, rank = ceil(7 x 0.8) = 6 -> the largest absolute log error
+    assert log_conformal_radius(errors) == pytest.approx(np.log(2.0))
+    lower, upper = apply_log_interval(np.array([100.0]), np.log(2.0))
+    assert (lower[0], upper[0]) == pytest.approx((50.0, 200.0))  # x/2 .. x*2: symmetric in log
+    with pytest.raises(ValueError):
+        log_conformal_radius(np.array([np.nan]))
+
+
+def test_log_interval_contains_the_forecast_even_when_all_errors_are_negative() -> None:
+    # The ADR-004 section 3 case: in a falling market every recent error is an over-estimate.
+    errors = log_errors(np.array([80.0, 85.0, 70.0, 90.0]), np.array([100.0] * 4))
+    old_low, old_high = conformal_quantiles(np.expm1(errors))
+    assert old_high < 0  # v1.0 interval is entirely below its own forecast
+    lower, upper = apply_log_interval(np.array([202.0]), log_conformal_radius(errors))
+    assert 0 < lower[0] < 202.0 < upper[0]
+    assert median_bias(errors) < 0  # the bias is reported, not hidden
+
+
+def test_log_conformal_coverage_on_exchangeable_errors() -> None:
+    rng = np.random.default_rng(1)
+    calib, test = rng.normal(0, 0.1, 2000), rng.normal(0, 0.1, 20000)
+    radius = log_conformal_radius(calib)
+    assert 0.78 <= np.mean(np.abs(test) <= radius) <= 0.84
+
+
+def test_log_errors_ignore_non_positive_values() -> None:
+    out = log_errors(np.array([100.0, 0.0, 50.0]), np.array([100.0, 10.0, -1.0]))
+    assert out[0] == 0.0 and np.isnan(out[1]) and np.isnan(out[2])
 
 
 def _metrics(mase: dict[str, float]) -> pd.DataFrame:

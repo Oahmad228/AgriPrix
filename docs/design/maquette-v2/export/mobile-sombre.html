@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgriPrix · Mobile sombre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#86C6EC}a:hover{color:#B3DCF3}
+:root{color-scheme:dark}</style>
+</head>
+<body>
+<!-- Export statique de la maquette AgriPrix v2 (spécification visuelle, données d’exemple). Voir SPEC.md. -->
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Public Sans', system-ui, sans-serif; color: #E6EDE9; background: #18231E; display: flex; flex-direction: column; overflow: hidden">
+<header style="background: #16211C; color: #F4F7F5; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2B3A32">
+<span style="font-weight: 700; font-size: 19px">AgriPrix</span>
+<button type="button" aria-label="Chercher un marché" style="min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #F4F7F5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button>
+</header>
+<div style="flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-size: 24px; line-height: 1.25; font-weight: 700">Où les prix sont-ils anormaux ce mois-ci ?</h1>
+<div style="display: flex; gap: 8px">
+<label style="flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #AEBAB3">Pays<select style="font: inherit; font-size: 15px; min-height: 44px; border-radius: 6px; border: 1px solid #33423A; padding: 0 8px; color: #E6EDE9; background: #18231E"><option>Burkina Faso</option></select></label>
+<label style="flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #AEBAB3">Produit<select style="font: inherit; font-size: 15px; min-height: 44px; border-radius: 6px; border: 1px solid #33423A; padding: 0 8px; color: #E6EDE9; background: #18231E"><option>Maïs</option></select></label>
+</div>
+<p style="margin: 0; font-size: 14px; color: #AEBAB3">2 alertes ce trimestre · données de septembre 2026</p>
+<a href="MarcheSombre.dc.html" style="text-decoration: none; color: #E6EDE9; border: 1px solid #33423A; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+<span style="display: flex; justify-content: space-between"><strong style="font-size: 17px">Ouahigouya</strong><strong style="color: #A9B6C9">▼ −25 %</strong></span>
+<span style="font-size: 15px">220 XOF/kg, environ 292 attendus</span>
+<span style="font-size: 13px; color: #AEBAB3">juillet 2026 · <span style="background: #E9C46A; color: #1E2B24; padding: 1px 6px; border-radius: 4px">soudure</span></span>
+</a>
+<a href="MarcheSombre.dc.html" style="text-decoration: none; color: #E6EDE9; border: 1px solid #33423A; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+<span style="display: flex; justify-content: space-between"><strong style="font-size: 17px">Namouno (CBM)</strong><strong style="color: #A9B6C9">▼ −29 %</strong></span>
+<span style="font-size: 15px">63 XOF/kg, environ 88 attendus</span>
+<span style="font-size: 13px; color: #AEBAB3">juillet 2026 · <span style="background: #E9C46A; color: #1E2B24; padding: 1px 6px; border-radius: 4px">soudure</span></span>
+</a>
+<a href="#" style="min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #2E7D62; color: #F4F7F5; text-decoration: none; font-weight: 600; font-size: 15px">Recevoir ces alertes par SMS ou e-mail</a>
+</div>
+<nav aria-label="Navigation principale" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #33423A; background: #18231E">
+<a href="MainSombre.dc.html" style="min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-decoration: none; color: #8FD3B6; font-weight: 700"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11 12 4l9 7v9H3z"></path></svg>Ce mois-ci</a>
+<a href="#" style="min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-decoration: none; color: #AEBAB3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"></path></svg>Carte</a>
+<a href="MarcheSombre.dc.html" style="min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-decoration: none; color: #AEBAB3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19h16"></path><path d="M6 15l4-5 4 3 5-7"></path></svg>Marchés</a>
+<a href="#" style="min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-decoration: none; color: #AEBAB3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path></svg>Suivis</a>
+</nav>
+</div>
+</body>
+</html>

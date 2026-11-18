@@ -503,3 +503,20 @@ Avant d'ouvrir la Phase 3, nous avons appliqué 8 corrections de rigueur sur les
 - **Tester une sécurité en l'attaquant** : la limitation de débit n'est prouvée qu'après avoir tenté de la contourner avec un faux `X-Forwarded-For`.
 - **Une règle d'architecture se garantit mieux par l'image que par la discipline** : sans pilote SQL dans son image, le dashboard ne peut pas contourner l'API.
 - **« Gratuit » n'est pas « disponible »** : une offre gratuite peut être saturée ou refusée ; garder une configuration portable (images ARM et x86, Caddy, `.env`) évite de dépendre d'un seul hébergeur.
+
+## Démo en ligne et correction des intervalles (2026-11-18)
+**Branches** : `main` (déploiement), `ux/quick-wins` (intervalles et interface)
+
+### 1. Ce que nous avons fait
+- **Mise en ligne gratuite** : base sur Neon (79 Mo), API sur Render (`agriprix-api.onrender.com`), tableau de bord sur Streamlit Community Cloud (`agriprix.streamlit.app`). Hugging Face exige désormais un compte payant pour les Spaces Docker : abandonné.
+- **Sécurité testée en l'attaquant** : sur Render, la limite de débit ne tenait pas (62 requêtes sur 62 acceptées, même avec une fausse adresse), parce que Render est derrière Cloudflare. La limite repose désormais sur `CF-Connecting-IP`. Après correction : la 61ᵉ requête est refusée ; la clé interne du tableau de bord passe ; une fausse clé est refusée.
+- **Intervalles** : passage à la méthode log-symétrique avec affichage du biais (ADR-004 §3).
+
+### 2. Exemple à reprendre dans le rapport de recherche (H3)
+Le cas Maïs blanc / Ouahigouya, avec une prévision à 202 et une fourchette de 131 à 189, est une **illustration concrète du problème de H3**. Quand le marché se retourne, des intervalles calibrés sur le passé récent absorbent le biais du modèle au point de devenir incohérents avec sa propre prévision : 15,6 % des prévisions servies étaient concernées.
+- Avec la méthode log-symétrique, la couverture à 6 mois sur W3 passe de 51,8 % à 61,4 % : c'est mieux, mais encore loin de 80 %.
+- **Attention à la rigueur** : pour l'étude, ce résultat sur W3 est **a posteriori** (W3 était déjà connu). Il motive H3, il ne la confirme pas.
+
+### 3. Ce que nous avons appris
+- **Un fournisseur peut ajouter un intermédiaire invisible** (ici Cloudflare) : une protection n'est prouvée qu'après l'avoir attaquée sur l'environnement réel.
+- **Une fourchette doit être cohérente avec le chiffre qu'elle entoure.** Corriger l'affichage sans cacher le biais (une phrase dédiée) est plus honnête que de corriger la prévision.

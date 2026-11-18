@@ -117,8 +117,10 @@ def test_forecasts_with_intervals_and_test_coverage(api: TestClient) -> None:
     assert body["training_run_id"] == 1
     assert len(body["items"]) == 6  # 2 eligible series x 3 horizons
     for item in body["items"]:
-        assert item["lower_80"] <= item["upper_80"]
+        assert 0 < item["lower_80"] <= item["yhat"] <= item["upper_80"]
         assert item["target_period"] > item["origin_period"]
+        assert item["interval_method"] == "log_symmetric"
+        assert item["recent_bias_pct"] is not None
     six = api.get("/api/v1/forecasts", params={"horizon": 6, "country": "SEN"}).json()["items"]
     assert api.get("/api/v1/forecasts", params={"horizon": 2}).status_code == 422
     assert [(f["horizon_months"], f["unit_measure"], f["currency_code"]) for f in six] == [

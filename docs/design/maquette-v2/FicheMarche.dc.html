@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>AgriPrix, fiche marché</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#1F5A7A}a:hover{color:#163F56}
+</style>
+</helmet>
+<div style="font-family: 'Public Sans', system-ui, sans-serif; color: #1E2B24; background: #FFFFFF; min-height: 1900px">
+<header style="background: #24453A; color: #FFFFFF">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px">
+<a href="Main.dc.html" style="color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 20px">AgriPrix</a>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; gap: 4px">
+<a href="Main.dc.html" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Ce mois-ci</a>
+<a href="Marche.dc.html" style="color: #1E2B24; background: #E9C46A; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-weight: 600; font-size: 15px">Marchés</a>
+<a href="#facteurs" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Facteurs</a>
+<a href="#fiabilite" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Fiabilité</a>
+</nav>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 24px 32px 48px">
+<nav aria-label="Fil d'Ariane" style="font-size: 14px; color: #4E5A53"><a href="Main.dc.html">Burkina Faso</a> › <a href="Main.dc.html">Maïs</a> › Ouahigouya</nav>
+<div style="margin-top: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px">
+<div style="flex: 1 1 520px; min-width: 0">
+<h1 style="margin: 0; font-size: 32px; font-weight: 700">Maïs blanc à Ouahigouya</h1>
+<p style="margin: 10px 0 0; font-size: 18px; line-height: 1.5; max-width: 760px">Le prix est <strong>25 % sous son niveau habituel</strong> pour la saison (220 XOF/kg en juillet 2026). Dans 3 mois, il devrait rester autour de <strong>220 XOF/kg</strong>.</p>
+<p style="margin: 6px 0 0; font-size: 14px; color: #4E5A53">Dernier relevé : septembre 2026 · source WFP via HDX</p>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button type="button" style="font: inherit; font-size: 15px; min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid #24453A; background: #24453A; color: #FFFFFF; font-weight: 600">Suivre ce marché</button>
+<button type="button" style="font: inherit; font-size: 15px; min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Comparer</button>
+<button type="button" style="font: inherit; font-size: 15px; min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Télécharger (CSV)</button>
+<button type="button" aria-label="Copier le lien de cette fiche" style="font: inherit; min-height: 44px; min-width: 44px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path></svg></button>
+</div>
+</div>
+
+<section aria-labelledby="prev-titre" style="margin-top: 28px; border: 1px solid #D6DDD8; border-radius: 8px">
+<div style="padding: 16px; border-bottom: 1px solid #E6EBE7; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+<h2 id="prev-titre" style="margin: 0; font-size: 18px; font-weight: 600">Prix et prévision</h2>
+<div role="group" aria-label="Horizon de prévision" style="display: flex; background: #F1F4F1; border-radius: 8px; padding: 4px; gap: 4px">
+<sc-for list="{{horizons}}" as="h" hint-placeholder-count="3">
+<sc-if value="{{h.on}}" hint-placeholder-val="{{false}}"><button type="button" aria-pressed="true" onClick="{{h.pick}}" style="font: inherit; font-size: 15px; min-height: 40px; padding: 0 16px; border-radius: 6px; border: 0; background: #FFFFFF; color: #1E2B24; font-weight: 600; box-shadow: 0 0 0 1px #D6DDD8">{{h.label}}</button></sc-if>
+<sc-if value="{{h.off}}" hint-placeholder-val="{{true}}"><button type="button" aria-pressed="false" onClick="{{h.pick}}" style="font: inherit; font-size: 15px; min-height: 40px; padding: 0 16px; border-radius: 6px; border: 0; background: transparent; color: #4E5A53">{{h.label}}</button></sc-if>
+</sc-for>
+</div>
+<div role="group" aria-label="Période affichée" style="display: flex; gap: 4px; font-size: 14px">
+<button type="button" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">1 an</button>
+<button type="button" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid #24453A; background: #FFFFFF; color: #1E2B24; font-weight: 600">5 ans</button>
+<button type="button" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Tout</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap">
+<div style="flex: 999 1 640px; min-width: 0; padding: 16px">
+<svg width="100%" viewBox="0 0 760 320" role="img" aria-label="Tracé illustratif : prix du maïs à Ouahigouya avec périodes de soudure et prévision">
+<g fill="#E9C46A" fill-opacity="0.28"><rect x="70" y="10" width="40" height="270"></rect><rect x="220" y="10" width="40" height="270"></rect><rect x="370" y="10" width="40" height="270"></rect><rect x="520" y="10" width="40" height="270"></rect></g>
+<g stroke="#E6EBE7"><line x1="40" y1="60" x2="740" y2="60"></line><line x1="40" y1="130" x2="740" y2="130"></line><line x1="40" y1="200" x2="740" y2="200"></line><line x1="40" y1="270" x2="740" y2="270"></line></g>
+<g font-family="Public Sans, sans-serif" font-size="12" fill="#5B6660"><text x="0" y="64">350</text><text x="0" y="134">300</text><text x="0" y="204">250</text><text x="0" y="274">200</text><text x="80" y="300">2022</text><text x="230" y="300">2023</text><text x="380" y="300">2024</text><text x="530" y="300">2025</text><text x="660" y="300">2026</text></g>
+<path d="M40 200 L80 150 L100 60 L130 110 L180 140 L250 135 L300 140 L380 120 L400 60 L430 125 L500 135 L560 140 L600 160 L610 250 L640 248" fill="none" stroke="#1E2B24" stroke-width="2"></path>
+<path d="M640 248 L680 {{fanTop}} L720 {{fanTop2}} L720 {{fanBot2}} L680 {{fanBot}} Z" fill="#2A6F97" fill-opacity="0.16"></path>
+<path d="M640 248 L680 246 L720 {{fcY}}" fill="none" stroke="#2A6F97" stroke-width="2" stroke-dasharray="6 5"></path>
+<line x1="640" y1="10" x2="640" y2="280" stroke="#5B6660" stroke-dasharray="2 4"></line>
+<path d="M603 236 l12 0 l-6 10 z" fill="#4A5568" stroke="#FFFFFF" stroke-width="1.5"></path>
+</svg>
+<p style="margin: 6px 0 0; font-size: 13px; color: #4E5A53">Tracé illustratif de la maquette. Bandes jaunes : période de soudure (juin–septembre). Survol : prix, date et écart à la normale.</p>
+</div>
+<div id="fiabilite" style="flex: 1 1 300px; min-width: 0; padding: 16px; border-left: 1px solid #E6EBE7; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 14px; color: #4E5A53">Prévision pour {{sel.month}}</span>
+<span style="font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums">{{sel.value}} <span style="font-size: 16px; font-weight: 500">XOF/kg</span></span>
+<span style="font-size: 15px">Fourchette probable : <strong>{{sel.range}}</strong></span>
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 6px; background: #F1F4F1">
+<span aria-hidden="true" style="font-size: 16px">{{sel.icon}}</span>
+<span style="font-size: 15px"><strong>Fiabilité {{sel.trust}}</strong> · la fourchette a été juste {{sel.cov}} fois sur 100 en test</span>
+</div>
+<sc-if value="{{sel.warn}}" hint-placeholder-val="{{false}}"><p style="margin: 0; font-size: 14px; color: #B3261E">À corriger : la prévision affichée sort de sa propre fourchette.</p></sc-if>
+<a href="#methode" style="font-size: 15px">Comment lire cette prévision ?</a>
+</div>
+</div>
+</section>
+
+<section id="facteurs" aria-labelledby="pourquoi-titre" style="margin-top: 32px; display: flex; flex-wrap: wrap; gap: 24px">
+<div style="flex: 1 1 520px; min-width: 0">
+<h2 id="pourquoi-titre" style="margin: 0; font-size: 22px; font-weight: 650">Pourquoi cette prévision ?</h2>
+<p style="margin: 6px 0 16px; font-size: 15px; color: #4E5A53">Les facteurs qui pèsent le plus, connus au moment de prévoir.</p>
+<ul style="list-style: none; margin: 0; padding: 0; border: 1px solid #D6DDD8; border-radius: 8px">
+<sc-for list="{{drivers}}" as="d" hint-placeholder-count="4">
+<li style="padding: 14px 16px; border-bottom: 1px solid #E6EBE7; display: flex; justify-content: space-between; gap: 12px; align-items: center">
+<span style="font-size: 15px">{{d.label}}</span>
+<span style="font-size: 14px; color: #4E5A53">{{d.effect}}</span>
+</li>
+</sc-for>
+</ul>
+</div>
+<div style="flex: 1 1 400px; min-width: 0">
+<h2 style="margin: 0; font-size: 22px; font-weight: 650">Ce qui s'est passé</h2>
+<p style="margin: 6px 0 16px; font-size: 15px; color: #4E5A53">Événements sourcés, placés aussi sur le graphique.</p>
+<ol style="list-style: none; margin: 0; padding: 0; border-left: 2px solid #D6DDD8">
+<sc-for list="{{events}}" as="e" hint-placeholder-count="3">
+<li style="padding: 0 0 18px 16px; position: relative">
+<span style="font-size: 13px; color: #4E5A53">{{e.date}}</span>
+<p style="margin: 2px 0 0; font-size: 15px">{{e.text}}</p>
+<span style="font-size: 13px; color: #4E5A53">Source : {{e.source}}</span>
+</li>
+</sc-for>
+</ol>
+</div>
+</section>
+
+<section id="methode" aria-labelledby="comp-titre" style="margin-top: 32px">
+<h2 id="comp-titre" style="margin: 0; font-size: 22px; font-weight: 650">Marchés voisins</h2>
+<p style="margin: 6px 0 16px; font-size: 15px; color: #4E5A53">Même produit, même mois : pour voir si la baisse est locale ou générale.</p>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{neighbours}}" as="n" hint-placeholder-count="4">
+<a href="Marche.dc.html" style="border: 1px solid #D6DDD8; border-radius: 8px; padding: 14px; text-decoration: none; color: #1E2B24; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<span style="font-weight: 600">{{n.name}}</span>
+<span style="font-size: 15px; font-variant-numeric: tabular-nums">{{n.price}} XOF/kg</span>
+<span style="font-size: 13px; color: #4E5A53">{{n.note}}</span>
+</a>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { h: '3' }; }
+  renderVals() {
+    const data = {
+      '1': { month: 'octobre 2026', value: '223', range: '193 à 232 XOF/kg', cov: '75', trust: 'correcte', icon: '●', warn: false, fcY: 244, top: 236, bot: 262 },
+      '3': { month: 'décembre 2026', value: '220', range: '166 à 228 XOF/kg', cov: '62', trust: 'moyenne', icon: '◐', warn: false, fcY: 248, top: 225, bot: 290 },
+      '6': { month: 'mars 2027', value: '202', range: '131 à 189 XOF/kg', cov: '24', trust: 'faible', icon: '○', warn: true, fcY: 268, top: 210, bot: 310 }
+    };
+    const sel = data[this.state.h];
+    const labels = [['1', '1 mois'], ['3', '3 mois'], ['6', '6 mois']];
+    return {
+      sel: sel,
+      fanTop: sel.top + 6, fanBot: sel.bot - 10, fanTop2: sel.top, fanBot2: sel.bot,
+      fcY: sel.fcY,
+      horizons: labels.map((l) => ({ label: l[1], on: l[0] === this.state.h, off: l[0] !== this.state.h, pick: () => this.setState({ h: l[0] }) })),
+      drivers: [
+        { label: 'Tendance des 12 derniers mois', effect: '[contribution à calculer]' },
+        { label: 'Saison (après la récolte, avant la soudure)', effect: '[contribution à calculer]' },
+        { label: 'Pluie de la saison 2026 vs normale', effect: '[à intégrer : CHIRPS]' },
+        { label: 'Estimation de récolte 2026-27', effect: '[à intégrer : CILSS]' }
+      ],
+      events: [
+        { date: 'mars 2026', text: 'Campagne 2025-26 favorable : production céréalière de l’UEMOA en hausse de 7,7 %.', source: 'CILSS' },
+        { date: 'juillet 2026', text: 'Alerte AgriPrix : prix 25 % sous le niveau habituel de la saison.', source: 'AgriPrix' },
+        { date: '[date]', text: '[Prochain avis PREGEC sur la campagne 2026-27]', source: 'CILSS' }
+      ],
+      neighbours: [
+        { name: 'Ouagadougou (Sankaryaré)', price: '175', note: 'dernier relevé' },
+        { name: 'Yako', price: '212', note: 'dernier relevé' },
+        { name: 'Tougan', price: '197', note: 'dernier relevé' },
+        { name: 'Kongoussi', price: '233', note: 'dernier relevé' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
