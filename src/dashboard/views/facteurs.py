@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
-from src.dashboard.common import FACTORS, GITHUB, footer
+from src.dashboard.common import FACTORS, GITHUB, factor_card, footer
 
 
 def render() -> None:
@@ -12,17 +12,14 @@ def render() -> None:
         '<p class="ap-lead">Quatre familles d\'informations publiques peuvent expliquer un '
         "retournement de prix : la pluie, la récolte, le carburant et les décisions "
         "commerciales. Aucune n'est encore dans l'entrepôt de données : chaque bloc reste "
-        "« [à intégrer] » tant que la donnée n'est pas chargée, datée et vérifiée.</p>",
+        "« En préparation » tant que la donnée n'est pas chargée, datée et vérifiée. Aucun "
+        "chiffre n'est affiché d'ici là.</p>",
         unsafe_allow_html=True,
     )
     cols = st.columns(2)
-    for i, (label, source) in enumerate(FACTORS):
+    for i, factor in enumerate(FACTORS):
         with cols[i % 2], st.container(border=True, key=f"card_factor_{i}"):
-            st.markdown(
-                f'<p class="ap-factor-label">{label}</p><p class="ap-factor-value">[à intégrer]</p>'
-                f'<p class="ap-factor-source">{source}</p>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(factor_card(*factor), unsafe_allow_html=True)
     st.markdown(
         "<p class=\"ap-note\">Règle : un facteur n'entre dans une prévision qu'avec la date à "
         "laquelle il était connu (pas de regard vers le futur). Le protocole de recherche qui "

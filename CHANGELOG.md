@@ -23,6 +23,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les
 - Marchés voisins : « relevé ancien » quand le dernier relevé a plus de 6 mois.
 - « Ce qui s'est passé » : « Aucune alerte depuis [mois année] » quand la dernière alerte a plus de 12 mois.
 - Sous la carte : « Les frontières affichées n'impliquent aucune prise de position. »
+- Facteurs externes (pluie, récolte, carburant, exportations) : « En préparation », avec ce que chaque bloc montrera et sa source prévue, au lieu de « [à intégrer] » ; aucun chiffre affiché tant que la donnée n'est pas chargée et vérifiée.
+- Plus d'icône de lien à côté des titres.
 
 ## [Non publié] — branche `ux/identite-visuelle` (identité visuelle)
 

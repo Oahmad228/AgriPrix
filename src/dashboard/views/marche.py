@@ -159,10 +159,10 @@ def context_blocks(country: dict, selected: dict) -> None:
         st.subheader("Pourquoi cette prévision ?")
         st.markdown('<p class="ap-sub">Les facteurs qui pèsent le plus, connus au moment de '
                     "prévoir.</p>", unsafe_allow_html=True)  # fmt: skip
-        rows = (("Tendance des 12 derniers mois", "[contribution à calculer]"),
-                ("Saison (après la récolte, avant la soudure)", "[contribution à calculer]"),
-                ("Pluie de la saison vs normale", "[à intégrer : CHIRPS]"),
-                ("Estimation de récolte", "[à intégrer : CILSS]"))  # fmt: skip
+        rows = (("Tendance des 12 derniers mois", "En préparation (calcul)"),
+                ("Saison (après la récolte, avant la soudure)", "En préparation (calcul)"),
+                ("Pluie de la saison vs normale", "En préparation (CHIRPS)"),
+                ("Estimation de récolte", "En préparation (CILSS)"))  # fmt: skip
         st.dataframe(pd.DataFrame(rows, columns=["Facteur", "Contribution"]), hide_index=True,
                      width="stretch")  # fmt: skip
     with events:
@@ -182,8 +182,9 @@ def context_blocks(country: dict, selected: dict) -> None:
             "<small>Source : AgriPrix</small></p>"
             for a in history
         )
-        html += ('<p class="ap-event"><small>[date]</small><br>[Événements GIEWS et PREGEC : à '
-                 "intégrer]<br><small>Source : FAO, CILSS</small></p>")  # fmt: skip
+        html += ('<p class="ap-event"><span class="ap-soon">En préparation</span><br>Événements '
+                 "datés des bulletins GIEWS et PREGEC.<br><small>Source prévue : FAO, CILSS"
+                 "</small></p>")  # fmt: skip
         st.markdown(html, unsafe_allow_html=True)
 
 

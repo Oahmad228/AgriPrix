@@ -167,7 +167,7 @@ def test_home_answers_before_any_click(monkeypatch) -> None:
     # Alert block: market, symbol and deviation, sentence with the expected level.
     assert "300 XOF/kg, alors qu'environ 240 étaient attendus pour la saison." in text
     assert "▲ +25 %" in text and "en période de soudure" in text
-    assert text.count("[à intégrer]") == 4  # outside factors are never invented
+    assert text.count("En préparation") >= 4 and "[à" not in text  # no value invented, no brackets
     assert "Plus fortes variations attendues dans 3 mois" in " ".join(
         h.value for h in page.subheader
     )

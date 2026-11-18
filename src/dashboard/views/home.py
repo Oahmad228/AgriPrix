@@ -12,6 +12,7 @@ from src.dashboard.common import (
     View,
     covered_countries,
     current_theme,
+    factor_card,
     filter_bar,
     footer,
     latest_alerts,
@@ -144,13 +145,9 @@ def factors_block() -> None:
         unsafe_allow_html=True,
     )
     cols = st.columns(4)
-    for i, (col, (label, source)) in enumerate(zip(cols, FACTORS, strict=True)):
+    for i, (col, factor) in enumerate(zip(cols, FACTORS, strict=True)):
         with col, st.container(border=True, key=f"card_factor_{i}"):
-            st.markdown(
-                f'<p class="ap-factor-label">{label}</p><p class="ap-factor-value">[à intégrer]</p>'
-                f'<p class="ap-factor-source">{source}</p>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(factor_card(*factor), unsafe_allow_html=True)
 
 
 def variations_block(view: View, selected: list[dict]) -> None:

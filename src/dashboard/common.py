@@ -61,12 +61,33 @@ SOURCES_HTML = (
     "Source : World Food Programme (WFP) via HDX, CC BY-IGO 3.0 · FAOSTAT, FAO, CC BY 4.0. "
     "Alertes et prévisions calculées par AgriPrix, sans validation du WFP ni de la FAO."
 )
+# Outside factors: not in the warehouse yet, so no value is shown (never an invented one).
+# (title, what the block will show once the data is loaded and checked, source)
 FACTORS = (
-    ("Pluie de la saison vs normale", "CHIRPS, Climate Hazards Center"),
-    ("Récolte céréalière estimée", "CILSS (PREGEC), FAO (GIEWS)"),
-    ("Prix du carburant", "WFP, à vérifier"),
-    ("Décisions d'exportation", "Rapports FEWS NET, sourcés"),
-)
+    ("Pluie de la saison vs normale",
+     "Cumul de pluie de la saison comparé aux années passées, par région.",
+     "CHIRPS, Climate Hazards Center"),
+    ("Récolte céréalière estimée",
+     "Production estimée de la campagne en cours, comparée à la moyenne.",
+     "CILSS (PREGEC), FAO (GIEWS)"),
+    ("Prix du carburant",
+     "Prix du carburant à la pompe et son évolution sur un an.",
+     "WFP"),
+    ("Décisions d'exportation",
+     "Fermetures de frontière et interdictions d'exporter, datées.",
+     "Rapports FEWS NET"),
+)  # fmt: skip
+SOON = "En préparation"
+
+
+def factor_card(label: str, what: str, source: str) -> str:
+    """A factor block without data: what it will show, its source, a sober status."""
+    return (
+        f'<p class="ap-factor-label">{label}</p>'
+        f'<p><span class="ap-soon">{SOON}</span></p>'
+        f'<p class="ap-factor-what">{what}</p>'
+        f'<p class="ap-factor-source">Source prévue : {source}</p>'
+    )
 
 
 def commodity_fr(name: str) -> str:
@@ -480,6 +501,11 @@ def _rules(c: dict) -> str:
   .ap-alert p {{ margin: .15rem 0; }}
   .ap-factor-label {{ color: {c["TEXT_MUTED"]}; font-size: .9rem; margin: 0; }}
   .ap-factor-value {{ font-size: 1.25rem; font-weight: 650; margin: .1rem 0; }}
+  .ap-soon {{ display: inline-block; border: 1px solid {c["BORDER"]}; border-radius: 999px;
+              padding: 0 .55rem; color: {c["TEXT_MUTED"]}; font-size: .8rem; }}
+  .ap-factor-what {{ font-size: .92rem; margin: .25rem 0; }}
+  /* No link icon next to headings (Streamlit adds one on hover). */
+  [data-testid="stHeaderActionElements"] {{ display: none !important; }}
   .ap-factor-source {{ color: {c["TEXT_MUTED"]}; font-size: .82rem; margin: 0; }}
   table.ap-var {{ width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }}
   table.ap-var th {{ text-align: left; font-weight: 600; padding: .55rem .8rem; border-bottom: 1px solid {c["BORDER"]}; }}
