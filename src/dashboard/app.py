@@ -6,14 +6,22 @@ Design contract: .impeccable/surfaces/dashboard.md ("Calendrier des saisons").
 
 from __future__ import annotations
 
+import sys
 from datetime import date
+from pathlib import Path
 
 import httpx
 import pandas as pd
 import streamlit as st
 
-from src.dashboard import charts, client
-from src.dashboard.client import ApiError
+# Streamlit Community Cloud runs this file without installing the project: make the
+# repository root importable so that "src.dashboard" resolves (no effect in Docker).
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.dashboard import charts, client  # noqa: E402
+from src.dashboard.client import ApiError  # noqa: E402
 
 GROUP_FR = {
     "Rice": "Riz", "Millet": "Mil", "Sorghum": "Sorgho", "Maize": "Maïs", "Beans": "Niébé",
