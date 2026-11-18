@@ -9,7 +9,10 @@ import httpx
 import streamlit as st
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
-TIMEOUT = httpx.Timeout(10.0)
+# A free hosted API sleeps when idle and needs up to about a minute to wake up.
+TIMEOUT = httpx.Timeout(float(os.getenv("API_TIMEOUT_SECONDS", "10")))
+# Shared secret that exempts the dashboard from the per-visitor quota (see src/api/limits.py).
+HEADERS = {"X-Internal-Key": key} if (key := os.getenv("API_INTERNAL_KEY")) else {}
 
 
 class ApiError(RuntimeError):
@@ -19,7 +22,9 @@ class ApiError(RuntimeError):
 def _get(path: str, params: dict[str, Any] | None = None) -> Any:
     clean = {k: v for k, v in (params or {}).items() if v is not None}
     try:
-        response = httpx.get(f"{API_BASE_URL}{path}", params=clean, timeout=TIMEOUT)
+        response = httpx.get(
+            f"{API_BASE_URL}{path}", params=clean, headers=HEADERS, timeout=TIMEOUT
+        )
     except httpx.HTTPError as exc:
         raise ApiError("Le service de données ne répond pas pour le moment.") from exc
     if response.status_code == 503:

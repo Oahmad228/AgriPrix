@@ -29,6 +29,9 @@ jobs:
             echo "docker-compose.prod.yml accepted an empty environment" && exit 1
           fi
 
+      - name: Streamlit Cloud theme is an exact copy of the dashboard theme
+        run: diff <(tail -n +3 .streamlit/config.toml) src/dashboard/.streamlit/config.toml
+
       - name: Start the full stack and wait for every healthcheck
         run: docker compose up -d --wait --wait-timeout 180
 

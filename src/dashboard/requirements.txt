@@ -1,0 +1,3 @@
+# Streamlit Community Cloud installs this file (entrypoint: src/dashboard/app.py).
+# Same pinned versions as the Docker dashboard image (no SQL driver: EF-13).
+-r ../../requirements/dashboard.lock

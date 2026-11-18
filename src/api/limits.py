@@ -14,6 +14,7 @@ of a request and silently exempts everything (found by tests/integration/test_ap
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
 from contextvars import ContextVar
 
@@ -29,14 +30,28 @@ current_request: ContextVar[Request | None] = ContextVar("current_request", defa
 def client_key(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+        if hops:
+            return hops[-1] if get_settings().forwarded_for_position == "last" else hops[0]
     return get_remote_address(request)
 
 
+def has_internal_key(request: Request) -> bool:
+    """The dashboard proves itself with the shared secret API_INTERNAL_KEY (if configured)."""
+    expected = get_settings().api_internal_key
+    given = request.headers.get("x-internal-key", "")
+    return bool(expected) and hmac.compare_digest(given.encode(), expected.encode())
+
+
 def is_internal_call() -> bool:
-    """True for service-to-service calls (no proxy header, private source address)."""
+    """True for service-to-service calls: the dashboard's shared secret, or no proxy header
+    and a private source address (Docker network)."""
     request = current_request.get()
-    if request is None or request.headers.get("x-forwarded-for") or request.client is None:
+    if request is None:
+        return False
+    if has_internal_key(request):
+        return True
+    if request.headers.get("x-forwarded-for") or request.client is None:
         return False
     try:
         address = ipaddress.ip_address(request.client.host)

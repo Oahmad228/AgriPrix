@@ -1,0 +1,36 @@
+# Render Blueprint (ADR-013 to come): the public read-only API on Render's free plan.
+# The warehouse is on Neon; the dashboard runs on Streamlit Community Cloud and calls this
+# API with the shared secret API_INTERNAL_KEY. Secrets (sync: false) are entered by Ahmad in
+# the Render dashboard, never committed.
+services:
+  - type: web
+    name: agriprix-api
+    runtime: python
+    plan: free
+    region: virginia  # same region as the Neon database (AWS us-east-1)
+    branch: main
+    buildCommand: >-
+      pip install --no-deps -r requirements/api.lock &&
+      pip check &&
+      pip install --no-deps -e .
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT --no-server-header
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.13
+      - key: APP_ENV
+        value: production
+      - key: POSTGRES_SSLMODE
+        value: require
+      - key: DW_READONLY_USER
+        value: agriprix_api_readonly
+      - key: FORWARDED_FOR_POSITION
+        value: last
+      - key: POSTGRES_HOST
+        sync: false
+      - key: DW_READONLY_PASSWORD
+        sync: false
+      - key: API_INTERNAL_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

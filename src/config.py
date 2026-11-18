@@ -35,6 +35,14 @@ class Settings(BaseSettings):
 
     api_base_url: str = "http://api:8000"
 
+    # Behind a managed platform (Render) the dashboard calls the API over the Internet: it
+    # proves it is the dashboard with this shared secret and is not rate-limited. Empty =
+    # disabled (Docker network deployments recognise internal calls by their address).
+    api_internal_key: str = ""
+    # Which X-Forwarded-For entry is the real visitor: "first" when our own proxy (Caddy)
+    # rewrites the header, "last" when the platform's proxy appends the address it saw.
+    forwarded_for_position: str = "first"
+
     # Empty locally (Docker network). "require" for a managed database such as Neon.
     postgres_sslmode: str = ""
 
