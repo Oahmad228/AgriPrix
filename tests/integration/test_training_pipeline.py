@@ -69,6 +69,19 @@ def test_training_campaign_writes_versioned_results(warehouse: Engine, raw_dir: 
     )
     assert picp == [(0,)]
 
+    # ADR-004 section 3: every served forecast is inside its interval, with positive bounds.
+    outside = rows(
+        warehouse,
+        "SELECT COUNT(*) FROM fact_forecast WHERE NOT (yhat_lower_80 > 0"
+        " AND yhat_lower_80 <= yhat_point AND yhat_point <= yhat_upper_80)",
+    )
+    assert outside == [(0,)]
+    methods = rows(
+        warehouse,
+        "SELECT DISTINCT interval_method, median_log_error IS NOT NULL FROM fact_conformal_quantiles",
+    )
+    assert methods == [("log_symmetric", True)]
+
     second = run_training(warehouse, git_sha="test", use_mlflow=False)
     assert second == run_id + 1
     active = rows(warehouse, "SELECT run_id FROM training_run WHERE is_production_active")

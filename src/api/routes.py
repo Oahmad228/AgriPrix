@@ -232,7 +232,8 @@ def list_forecasts(
             "  s.unit_measure, s.currency_code, f.horizon_months,"
             "  o.period_start_date AS origin_period, t.period_start_date AS target_period,"
             "  f.yhat_point AS yhat, f.yhat_lower_80 AS lower_80, f.yhat_upper_80 AS upper_80,"
-            "  f.champion_model_name AS model, ch.test_picp_80, last.observed_value AS last_value"
+            "  f.champion_model_name AS model, ch.test_picp_80, last.observed_value AS last_value,"
+            "  100 * (EXP(q.median_log_error) - 1) AS recent_bias_pct, q.interval_method"
             " FROM fact_forecast f"
             " JOIN dim_series_catalog s USING (series_id)"
             " JOIN dim_market m USING (market_code)"
@@ -244,6 +245,10 @@ def list_forecasts(
             " LEFT JOIN fact_champion_model ch ON ch.run_id = f.run_id"
             "  AND ch.country_iso3 = s.country_iso3 AND ch.commodity_group = c.commodity_group"
             "  AND ch.horizon_months = f.horizon_months"
+            " LEFT JOIN fact_conformal_quantiles q ON q.run_id = f.run_id"
+            "  AND q.eval_window = 'PROD_FINAL' AND q.country_iso3 = s.country_iso3"
+            "  AND q.commodity_group = c.commodity_group AND q.model_name = f.champion_model_name"
+            "  AND q.horizon_months = f.horizon_months"
             + _where(conditions)
             + " ORDER BY f.series_id, f.horizon_months LIMIT :limit"
         ),

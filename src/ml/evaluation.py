@@ -53,9 +53,58 @@ def conformal_quantiles(relative_errors: np.ndarray, alpha: float = ALPHA) -> tu
 def apply_interval(
     prediction: np.ndarray, q_low: float, q_high: float
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Interval of the v1.0-baseline method (signed relative errors, ADR-004 sections 1-2).
+
+    Kept for the comparison report and the frozen research reference: when every recent
+    error has the same sign the interval excludes its own forecast (ADR-004 section 3).
+    """
     lower = np.maximum(0.0, prediction * (1 + q_low))
     upper = prediction * (1 + q_high)
     return lower, upper
+
+
+def log_errors(actual: np.ndarray, prediction: np.ndarray) -> np.ndarray:
+    """ln(actual / prediction): symmetric for over- and under-estimation (NaN if <= 0)."""
+    actual = np.asarray(actual, dtype=float)
+    prediction = np.asarray(prediction, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        out = np.log(actual / prediction)
+    out[(actual <= 0) | (prediction <= 0)] = np.nan
+    return out
+
+
+def log_conformal_radius(errors: np.ndarray, alpha: float = ALPHA) -> float:
+    """Split-conformal radius on |ln(actual / prediction)| (ADR-004 section 3).
+
+    With n calibration errors the radius is the ceil((n + 1)(1 - alpha))-th smallest absolute
+    log error, i.e. the 80th percentile with the finite-sample correction that guarantees
+    >= 1 - alpha coverage when future errors are exchangeable with the calibration errors.
+    """
+    values = np.sort(np.abs(np.asarray(errors, dtype=float)))
+    values = values[~np.isnan(values)]
+    n = len(values)
+    if n == 0:
+        raise ValueError("no calibration residuals")
+    rank = min(n, math.ceil((n + 1) * (1 - alpha)))
+    return float(values[rank - 1])
+
+
+def apply_log_interval(prediction: np.ndarray, radius) -> tuple[np.ndarray, np.ndarray]:
+    """prediction x exp(-radius) .. prediction x exp(+radius): positive, forecast at the
+    centre on the log scale, so the served forecast is always inside its interval."""
+    prediction = np.asarray(prediction, dtype=float)
+    radius = np.asarray(radius, dtype=float)
+    return prediction * np.exp(-radius), prediction * np.exp(radius)
+
+
+def median_bias(errors: np.ndarray) -> float:
+    """Median ln(actual / prediction) of the calibration errors: < 0 = the model recently
+    over-estimated. Shown to visitors as exp(bias) - 1, never applied to the forecast."""
+    values = np.asarray(errors, dtype=float)
+    values = values[~np.isnan(values)]
+    if values.size == 0:
+        raise ValueError("no calibration residuals")
+    return float(np.median(values))
 
 
 CHAMPION_RULE = (
