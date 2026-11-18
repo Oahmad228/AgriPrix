@@ -26,6 +26,9 @@ services:
         value: agriprix_api_readonly
       - key: FORWARDED_FOR_POSITION
         value: last
+      # Render is behind Cloudflare, which overwrites this header with the real visitor address.
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
       - key: POSTGRES_HOST
         sync: false
       - key: DW_READONLY_PASSWORD

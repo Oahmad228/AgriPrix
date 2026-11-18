@@ -28,11 +28,16 @@ current_request: ContextVar[Request | None] = ContextVar("current_request", defa
 
 
 def client_key(request: Request) -> str:
+    settings = get_settings()
+    if settings.client_ip_header:
+        trusted = request.headers.get(settings.client_ip_header, "").strip()
+        if trusted:
+            return trusted
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
         if hops:
-            return hops[-1] if get_settings().forwarded_for_position == "last" else hops[0]
+            return hops[-1] if settings.forwarded_for_position == "last" else hops[0]
     return get_remote_address(request)
 
 
