@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # Which X-Forwarded-For entry is the real visitor: "first" when our own proxy (Caddy)
     # rewrites the header, "last" when the platform's proxy appends the address it saw.
     forwarded_for_position: str = "first"
+    # Header set by a CDN that overwrites any value sent by the visitor (Render is behind
+    # Cloudflare: "cf-connecting-ip"). Empty = use X-Forwarded-For as above.
+    client_ip_header: str = ""
 
     # Empty locally (Docker network). "require" for a managed database such as Neon.
     postgres_sslmode: str = ""

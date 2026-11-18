@@ -46,3 +46,13 @@ def test_internal_key_exempts_only_the_exact_secret(settings) -> None:
 
 def test_no_secret_configured_means_no_exemption(settings) -> None:
     assert not limits.has_internal_key(_request({"X-Internal-Key": ""}))
+
+
+def test_cdn_header_wins_over_forwarded_for(settings, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "client_ip_header", "cf-connecting-ip")
+    request = _request(
+        {"X-Forwarded-For": "1.2.3.4, 172.70.0.9", "CF-Connecting-IP": "198.51.100.1"}
+    )
+    assert limits.client_key(request) == "198.51.100.1"
+    # Without the CDN header (local calls), the usual X-Forwarded-For rule applies.
+    assert limits.client_key(_request({"X-Forwarded-For": "198.51.100.2"})) == "198.51.100.2"
