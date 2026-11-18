@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgriPrix · Accueil (maquette v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#1F5A7A}a:hover{color:#163F56}
+</style>
+</head>
+<body>
+<!-- Export statique de la maquette AgriPrix v2 (spécification visuelle, données d’exemple). Voir SPEC.md. -->
+<div style="font-family: 'Public Sans', system-ui, sans-serif; color: #1E2B24; background: #FFFFFF; min-height: 1640px">
+<header style="background: #24453A; color: #FFFFFF">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px">
+<a href="accueil.html" style="color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E9C46A" stroke-width="2" aria-hidden="true"><path d="M12 21V9"></path><path d="M12 9c0-3 2-5 5-6 0 3-2 5-5 6Z"></path><path d="M12 13c0-3-2-5-5-6 0 3 2 5 5 6Z"></path></svg>AgriPrix</a>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto">
+<a href="accueil.html" style="color: #1E2B24; background: #E9C46A; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-weight: 600; font-size: 15px">Ce mois-ci</a>
+<a href="fiche-marche.html" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Marchés</a>
+<a href="#facteurs" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Facteurs</a>
+<a href="#fiabilite" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Fiabilité</a>
+<a href="#donnees" style="color: #FFFFFF; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 15px">Données &amp; API</a>
+</nav>
+<label style="display: flex; align-items: center; gap: 8px; background: #2F5649; border: 1px solid #3E6658; border-radius: 6px; padding: 0 12px; min-height: 44px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D8E3DD" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<span style="position: absolute; left: -9999px">Chercher un marché ou un produit</span>
+<input type="search" placeholder="Chercher un marché, un produit…" style="background: transparent; border: 0; color: #FFFFFF; font: inherit; font-size: 15px; width: 220px; outline: none">
+</label>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 32px 48px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.01em">Où les prix sont-ils anormaux ce mois-ci ?</h1>
+<p style="margin: 8px 0 0; color: #4E5A53; font-size: 16px">Données jusqu'à septembre 2026 · mise à jour mensuelle · 782 séries suivies dans 6 pays</p>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button type="button" style="font: inherit; font-size: 15px; min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24; display: flex; align-items: center; gap: 8px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10 21h4"></path></svg>Recevoir les alertes</button>
+<button type="button" style="font: inherit; font-size: 15px; min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24; display: flex; align-items: center; gap: 8px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12v8h16v-8"></path><path d="M12 3v12"></path><path d="m7 8 5-5 5 5"></path></svg>Partager cette vue</button>
+</div>
+</div>
+
+<div role="group" aria-label="Filtres" style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; padding: 16px; background: #F1F4F1; border-radius: 8px">
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+<span style="font-size: 14px; color: #4E5A53; margin-right: 4px">Pays</span>
+
+
+
+<button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Tous</button>
+
+
+
+<button type="button" aria-pressed="true" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #24453A; background: #24453A; color: #FFFFFF; font-weight: 600">Burkina Faso</button>
+
+
+
+
+
+<button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Mali</button>
+
+
+
+
+<button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Niger</button>
+
+
+
+
+<button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Sénégal</button>
+
+
+
+
+<button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Côte d'Ivoire</button>
+
+
+
+
+<button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #D6DDD8; background: #FFFFFF; color: #1E2B24">Maroc</button>
+
+
+</div>
+<label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4E5A53">Produit
+<select style="font: inherit; font-size: 15px; min-height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid #D6DDD8; color: #1E2B24; background: #FFFFFF"><option>Maïs</option><option>Mil</option><option>Sorgho</option><option>Riz</option><option>Niébé</option></select>
+</label>
+</div>
+
+<section aria-labelledby="carte-titre" style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 24px">
+<div style="flex: 999 1 560px; min-width: 0; border: 1px solid #D6DDD8; border-radius: 8px; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #E6EBE7; flex-wrap: wrap; gap: 8px">
+<h2 id="carte-titre" style="margin: 0; font-size: 18px; font-weight: 600">Carte des marchés · maïs, Burkina Faso</h2>
+<div style="display: flex; gap: 14px; font-size: 13px; color: #4E5A53; flex-wrap: wrap">
+<span style="display: flex; align-items: center; gap: 6px"><span style="color: #B3261E">▲</span>Hausse anormale</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="color: #4A5568">▼</span>Baisse anormale</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #FFFFFF; border: 2px solid #5B6660"></span>Prix dans la normale</span>
+</div>
+</div>
+<div style="position: relative; height: 440px; background: #F1F4F1">
+<svg width="100%" height="100%" viewBox="0 0 700 440" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte schématique du Burkina Faso avec les marchés suivis">
+<path d="M150 120 L260 70 L380 60 L470 95 L560 120 L610 200 L590 290 L500 330 L420 360 L330 350 L240 380 L170 330 L120 260 L110 180 Z" fill="#FFFFFF" stroke="#D6DDD8" stroke-width="2"></path>
+<g fill="#FFFFFF" stroke="#5B6660" stroke-width="2"><circle cx="300" cy="200" r="7"></circle><circle cx="360" cy="230" r="7"></circle><circle cx="420" cy="180" r="7"></circle><circle cx="250" cy="260" r="7"></circle><circle cx="480" cy="250" r="7"></circle><circle cx="340" cy="300" r="7"></circle><circle cx="200" cy="200" r="7"></circle><circle cx="430" cy="120" r="7"></circle><circle cx="300" cy="140" r="7"></circle><circle cx="520" cy="190" r="7"></circle></g>
+<g><path d="M262 128 l12 0 l-6 10 z" fill="#4A5568" stroke="#FFFFFF" stroke-width="1.5"></path><text x="282" y="136" font-family="Public Sans, sans-serif" font-size="14" fill="#1E2B24" font-weight="600">Ouahigouya −25 %</text></g>
+<g><path d="M574 268 l12 0 l-6 10 z" fill="#4A5568" stroke="#FFFFFF" stroke-width="1.5"></path><text x="476" y="300" font-family="Public Sans, sans-serif" font-size="14" fill="#1E2B24" font-weight="600">Namouno −29 %</text></g>
+<text x="352" y="222" font-family="Public Sans, sans-serif" font-size="12" fill="#5B6660">Ouagadougou</text>
+</svg>
+<p style="position: absolute; left: 16px; bottom: 12px; margin: 0; font-size: 13px; color: #4E5A53; background: #FFFFFF; padding: 6px 10px; border-radius: 6px; border: 1px solid #E6EBE7">Carte interactive : survoler un point montre le prix, cliquer ouvre la fiche du marché.</p>
+</div>
+</div>
+
+<aside aria-labelledby="alertes-titre" style="flex: 1 1 360px; min-width: 0; border: 1px solid #D6DDD8; border-radius: 8px">
+<div style="padding: 14px 16px; border-bottom: 1px solid #E6EBE7">
+<h2 id="alertes-titre" style="margin: 0; font-size: 18px; font-weight: 600">2 alertes ce trimestre</h2>
+<p style="margin: 4px 0 0; font-size: 14px; color: #4E5A53">Un prix est en alerte quand il s'éloigne nettement de son niveau habituel pour la saison.</p>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0">
+
+<li style="padding: 16px; border-bottom: 1px solid #E6EBE7; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<span style="font-weight: 600; font-size: 17px">Ouahigouya</span>
+<span style="font-weight: 700; font-size: 17px; color: #4A5568; font-variant-numeric: tabular-nums">▼ −25 %</span>
+</div>
+<span style="font-size: 15px">220 XOF/kg, alors qu’environ 292 étaient attendus pour la saison.</span>
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: #4E5A53">
+<span>juillet 2026</span>
+<span style="background: #E9C46A; color: #1E2B24; padding: 2px 8px; border-radius: 4px">en période de soudure</span>
+<span>Gravité : modérée</span>
+</div>
+<a href="fiche-marche.html" style="font-size: 15px; font-weight: 600; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center">Voir la fiche du marché →</a>
+</li>
+
+<li style="padding: 16px; border-bottom: 1px solid #E6EBE7; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<span style="font-weight: 600; font-size: 17px">Namouno (CBM)</span>
+<span style="font-weight: 700; font-size: 17px; color: #4A5568; font-variant-numeric: tabular-nums">▼ −29 %</span>
+</div>
+<span style="font-size: 15px">63 XOF/kg, alors qu’environ 88 étaient attendus pour la saison.</span>
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: #4E5A53">
+<span>juillet 2026</span>
+<span style="background: #E9C46A; color: #1E2B24; padding: 2px 8px; border-radius: 4px">en période de soudure</span>
+<span>Gravité : modérée</span>
+</div>
+<a href="fiche-marche.html" style="font-size: 15px; font-weight: 600; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center">Voir la fiche du marché →</a>
+</li>
+
+</ul>
+</aside>
+</section>
+
+<section id="facteurs" aria-labelledby="facteurs-titre" style="margin-top: 40px">
+<h2 id="facteurs-titre" style="margin: 0; font-size: 22px; font-weight: 650">Ce qui pèse sur les prix</h2>
+<p style="margin: 6px 0 16px; color: #4E5A53; font-size: 15px">Chaque facteur est daté à sa publication : la prévision n'utilise que ce qui était connu au moment de prévoir.</p>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+
+<div style="border: 1px solid #D6DDD8; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<span style="font-size: 14px; color: #4E5A53">Pluie de la saison vs normale</span>
+<span style="font-size: 20px; font-weight: 700">[à intégrer]</span>
+<span style="font-size: 13px; color: #4E5A53">CHIRPS, Climate Hazards Center</span>
+</div>
+
+<div style="border: 1px solid #D6DDD8; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<span style="font-size: 14px; color: #4E5A53">Récolte céréalière estimée</span>
+<span style="font-size: 20px; font-weight: 700">[à intégrer]</span>
+<span style="font-size: 13px; color: #4E5A53">CILSS (PREGEC), FAO (GIEWS)</span>
+</div>
+
+<div style="border: 1px solid #D6DDD8; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<span style="font-size: 14px; color: #4E5A53">Prix du carburant</span>
+<span style="font-size: 20px; font-weight: 700">[à intégrer]</span>
+<span style="font-size: 13px; color: #4E5A53">WFP, à vérifier</span>
+</div>
+
+<div style="border: 1px solid #D6DDD8; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<span style="font-size: 14px; color: #4E5A53">Décisions d’exportation</span>
+<span style="font-size: 20px; font-weight: 700">[à intégrer]</span>
+<span style="font-size: 13px; color: #4E5A53">Rapports FEWS NET, sourcés</span>
+</div>
+
+</div>
+</section>
+
+<section id="fiabilite" aria-labelledby="prev-titre" style="margin-top: 40px">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px">
+<div>
+<h2 id="prev-titre" style="margin: 0; font-size: 22px; font-weight: 650">Plus fortes variations attendues dans 3 mois</h2>
+<p style="margin: 6px 0 0; color: #4E5A53; font-size: 15px">Maïs blanc, Burkina Faso, prévision pour décembre 2026.</p>
+</div>
+<span style="font-size: 14px; border: 1px solid #D6DDD8; border-radius: 999px; padding: 6px 12px">Fiabilité à 3 mois : <strong>moyenne</strong> (fourchette juste 62 fois sur 100 en test)</span>
+</div>
+<div style="margin-top: 16px; border: 1px solid #D6DDD8; border-radius: 8px; overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; min-width: 640px">
+<thead><tr style="text-align: left; color: #4E5A53; font-size: 14px"><th style="padding: 12px 16px; font-weight: 600">Marché</th><th style="padding: 12px 16px; font-weight: 600">Dernier prix</th><th style="padding: 12px 16px; font-weight: 600">Prévision</th><th style="padding: 12px 16px; font-weight: 600; width: 40%">Variation attendue</th></tr></thead>
+<tbody>
+
+<tr style="border-top: 1px solid #E6EBE7">
+<td style="padding: 12px 16px"><a href="fiche-marche.html" style="text-decoration: none; font-weight: 600">Kombissiri</a></td>
+<td style="padding: 12px 16px">157 XOF/kg</td>
+<td style="padding: 12px 16px">143 XOF/kg</td>
+<td style="padding: 12px 16px"><div style="display: flex; align-items: center; gap: 10px"><div style="flex: 1; height: 10px; background: #F1F4F1; border-radius: 5px; overflow: hidden"><div style="height: 10px; background: #2A6F97; width: 90%"></div></div><span style="min-width: 56px; text-align: right">−9,0 %</span></div></td>
+</tr>
+
+<tr style="border-top: 1px solid #E6EBE7">
+<td style="padding: 12px 16px"><a href="fiche-marche.html" style="text-decoration: none; font-weight: 600">Solenzo</a></td>
+<td style="padding: 12px 16px">124 XOF/kg</td>
+<td style="padding: 12px 16px">113 XOF/kg</td>
+<td style="padding: 12px 16px"><div style="display: flex; align-items: center; gap: 10px"><div style="flex: 1; height: 10px; background: #F1F4F1; border-radius: 5px; overflow: hidden"><div style="height: 10px; background: #2A6F97; width: 85%"></div></div><span style="min-width: 56px; text-align: right">−8,5 %</span></div></td>
+</tr>
+
+<tr style="border-top: 1px solid #E6EBE7">
+<td style="padding: 12px 16px"><a href="fiche-marche.html" style="text-decoration: none; font-weight: 600">Kongoussi</a></td>
+<td style="padding: 12px 16px">233 XOF/kg</td>
+<td style="padding: 12px 16px">214 XOF/kg</td>
+<td style="padding: 12px 16px"><div style="display: flex; align-items: center; gap: 10px"><div style="flex: 1; height: 10px; background: #F1F4F1; border-radius: 5px; overflow: hidden"><div style="height: 10px; background: #2A6F97; width: 83%"></div></div><span style="min-width: 56px; text-align: right">−8,3 %</span></div></td>
+</tr>
+
+<tr style="border-top: 1px solid #E6EBE7">
+<td style="padding: 12px 16px"><a href="fiche-marche.html" style="text-decoration: none; font-weight: 600">Zorgho</a></td>
+<td style="padding: 12px 16px">193 XOF/kg</td>
+<td style="padding: 12px 16px">177 XOF/kg</td>
+<td style="padding: 12px 16px"><div style="display: flex; align-items: center; gap: 10px"><div style="flex: 1; height: 10px; background: #F1F4F1; border-radius: 5px; overflow: hidden"><div style="height: 10px; background: #2A6F97; width: 83%"></div></div><span style="min-width: 56px; text-align: right">−8,3 %</span></div></td>
+</tr>
+
+<tr style="border-top: 1px solid #E6EBE7">
+<td style="padding: 12px 16px"><a href="fiche-marche.html" style="text-decoration: none; font-weight: 600">Zabré</a></td>
+<td style="padding: 12px 16px">140 XOF/kg</td>
+<td style="padding: 12px 16px">128 XOF/kg</td>
+<td style="padding: 12px 16px"><div style="display: flex; align-items: center; gap: 10px"><div style="flex: 1; height: 10px; background: #F1F4F1; border-radius: 5px; overflow: hidden"><div style="height: 10px; background: #2A6F97; width: 82%"></div></div><span style="min-width: 56px; text-align: right">−8,2 %</span></div></td>
+</tr>
+
+</tbody>
+</table>
+</div>
+</section>
+
+<footer id="donnees" style="margin-top: 48px; padding-top: 20px; border-top: 1px solid #D6DDD8; display: flex; flex-wrap: wrap; gap: 16px 32px; font-size: 14px; color: #4E5A53">
+<span>Source : World Food Programme (WFP) via HDX, CC BY-IGO 3.0 · FAOSTAT, FAO, CC BY 4.0</span>
+<span>Alertes et prévisions calculées par AgriPrix, sans validation du WFP ni de la FAO.</span>
+<a href="#donnees">API et téléchargements</a>
+<a href="#fiabilite">Méthode et fiabilité</a>
+</footer>
+</main>
+</div>
+</body>
+</html>

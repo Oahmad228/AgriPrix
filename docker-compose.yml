@@ -201,6 +201,7 @@ services:
       - ./pyproject.toml:/app/pyproject.toml:ro
       - ./data:/app/data
       - ./docs:/app/docs
+      - ./scripts:/app/scripts
       - mlflow_artifacts:/mlflow/artifacts
     mem_limit: 1280m
     cpus: 1.50

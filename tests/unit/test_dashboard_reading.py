@@ -56,27 +56,36 @@ def _point(sid: int, lat: float, lon: float, state: str) -> dict:
 def test_market_map_uses_osm_tiles_borders_and_states() -> None:
     points = [_point(1, 12.37, -1.53, "NORMAL"), _point(2, 13.58, -2.42, "DOWN"),
               _point(3, 14.03, -0.03, "UP")]  # fmt: skip
-    fig = maps.market_map(points, "BFA")
+    fig = maps.market_map(points, "BFA", {"BFA": "Burkina Faso", "MLI": "Mali"})
     assert fig.layout.map.style == "open-street-map"
-    # Colour AND word in the legend (the symbol is in the word, the hover and the alert list).
-    names = [t.name for t in fig.data]
-    assert names == ["▲ Hausse anormale", "▼ Baisse anormale", "● Prix dans la normale"]
-    colours = {t.name: t.marker.color for t in fig.data}
+    # Clickable country areas first, then the markets: colour AND word in the legend.
+    assert fig.data[0].type == "choroplethmap" and list(fig.data[0].locations) == ["BFA", "MLI"]
+    names = [t.name for t in fig.data[1:] if t.showlegend is not False]
+    assert names == ["▲ Hausse anormale", "▼ Baisse anormale", "○ Prix dans la normale"]
+    colours = {t.name: t.marker.color for t in fig.data[1:]}
     assert colours["▲ Hausse anormale"] == maps.ALERT_UP != colours["▼ Baisse anormale"]
-    # A click gives back the series id.
-    assert fig.data[0].customdata[0][0] == 3
+    # Normal market: grey disc under a white one (a white circle with a grey edge).
+    assert [t.marker.color for t in fig.data[-2:]] == [maps.NORMAL, "#FFFFFF"]
+    assert fig.data[1].customdata[0][0] == 3  # a click gives back the series id
     # Country outline + Burkina Faso regions, drawn under the markets.
     layers = fig.layout.map.layers
     assert len(layers) == 2 and all(layer.below == "traces" for layer in layers)
     centre = fig.layout.map.center
-    assert 12 < centre.lat < 14.1 and -2.5 < centre.lon < 0
+    assert 11 < centre.lat < 14 and -3 < centre.lon < 0
     assert 3 <= fig.layout.map.zoom <= 9
 
 
+def test_all_countries_view_fits_every_outline() -> None:
+    fig = maps.market_map([], None, {"BFA": "Burkina Faso", "MAR": "Maroc"})
+    assert not fig.layout.map.layers  # no single country outlined
+    assert fig.layout.map.zoom < 5 and 15 < fig.layout.map.center.lat < 30
+    assert any(t.mode == "text" and "Indice national" in t.text[0] for t in fig.data[1:])
+
+
 def test_map_without_border_file_still_renders() -> None:
-    fig = maps.market_map([_point(1, 33.6, -7.6, "NORMAL")], "MAR")
+    fig = maps.market_map([_point(1, 33.6, -7.6, "NORMAL")], "XXX")
     assert not fig.layout.map.layers
-    assert fig.layout.map.zoom == 7.64  # one market: extent floored at 1 degree
+    assert fig.layout.map.center.lat == 33.6
 
 
 def test_date_axis_labels_every_year_or_quarter() -> None:

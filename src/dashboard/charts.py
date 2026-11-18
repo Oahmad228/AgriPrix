@@ -12,13 +12,15 @@ from datetime import date
 import pandas as pd
 import plotly.graph_objects as go
 
-INK = "#1E2B24"
-MUTED = "#5B6660"
-GRID = "#E6EBE7"
-STRAW = "#E9C46A"
-FORECAST = "#2A6F97"
-ALERT_UP = "#B3261E"
-ALERT_DOWN = "#4A5568"
+from src.dashboard import tokens as tk  # noqa: E402
+
+INK = tk.INK
+MUTED = tk.AXIS
+GRID = tk.GRID
+STRAW = tk.SEASON
+FORECAST = tk.FORECAST
+ALERT_UP = tk.ALERT_UP
+ALERT_DOWN = tk.ALERT_DOWN
 FONT = "Public Sans, system-ui, sans-serif"
 MONTHS_FR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]  # fmt: skip
 
@@ -58,7 +60,9 @@ def _season_bands(
         x1 = pd.Timestamp(year, last, 1) + pd.offsets.MonthEnd(1)
         if x1 < start or x0 > end:
             continue
-        fig.add_vrect(x0=x0, x1=x1, fillcolor=STRAW, opacity=0.28, line_width=0, layer="below")
+        fig.add_vrect(
+            x0=x0, x1=x1, fillcolor=STRAW, opacity=tk.SEASON_OPACITY, line_width=0, layer="below"
+        )
     # Legend entry for the bands (vrects have none of their own).
     fig.add_trace(
         go.Scatter(
@@ -162,7 +166,7 @@ def price_figure(
         fig.add_trace(
             go.Scatter(
                 x=x, y=low, mode="lines", line={"width": 0}, fill="tonexty",
-                fillcolor="rgba(42, 111, 151, 0.16)", name="Intervalle à 80 %", hoverinfo="skip",
+                fillcolor=tk.FORECAST_FAN, name="Intervalle à 80 %", hoverinfo="skip",
             )
         )  # fmt: skip
         fig.add_trace(
@@ -180,8 +184,8 @@ def price_figure(
     fig.update_layout(
         height=440 if two_lines else 420,
         margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        paper_bgcolor="#FFFFFF",
-        plot_bgcolor="#FFFFFF",
+        paper_bgcolor=tk.BG,
+        plot_bgcolor=tk.BG,
         font={"family": FONT, "color": INK, "size": 13},
         separators=", ",
         hovermode="closest",
@@ -207,7 +211,7 @@ def gain_figure(rows: list[dict]) -> go.Figure:
     names = {"LightGBM_Global": "Modèle appris sur tous les marchés (LightGBM)",
              "Ridge_Seasonal": "Tendance et saison par marché (Ridge)",
              "SeasonalNaive": "Même mois l'an passé"}  # fmt: skip
-    colours = {"LightGBM_Global": FORECAST, "Ridge_Seasonal": "#8A6D1F", "SeasonalNaive": MUTED}
+    colours = {"LightGBM_Global": FORECAST, "Ridge_Seasonal": tk.BRAND, "SeasonalNaive": MUTED}
     fig = go.Figure()
     for model, block in frame.groupby("model_name"):
         fig.add_trace(
@@ -221,7 +225,7 @@ def gain_figure(rows: list[dict]) -> go.Figure:
     fig.add_hline(y=0, line={"color": INK, "width": 1})
     fig.update_layout(
         barmode="group", height=340, margin={"l": 8, "r": 8, "t": 8, "b": 8},
-        paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF", separators=", ",
+        paper_bgcolor=tk.BG, plot_bgcolor=tk.BG, separators=", ",
         font={"family": FONT, "color": INK, "size": 13},
         legend={"orientation": "h", "yanchor": "top", "y": -0.12, "x": 0},
         yaxis={"title": {"text": "écart d'erreur vs « dernier prix connu » (%)", "font": {"size": 12}},

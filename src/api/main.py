@@ -26,6 +26,9 @@ settings = get_settings()
 logger = logging.getLogger("agriprix.api")
 
 DESCRIPTION = """
+<img src="https://raw.githubusercontent.com/Oahmad228/AgriPrix/main/docs/design/logo/agriprix-logo-horizontal.png"
+     alt="AgriPrix" width="320">
+
 Public read-only API of AgriPrix Observatory: food prices of West Africa (UEMOA, WFP data,
 licence CC BY-IGO 3.0) and Morocco (FAOSTAT, CC BY 4.0), price alerts and 1/3/6-month
 forecasts with 80 % intervals.

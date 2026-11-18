@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from src.dashboard import charts, client
+from src.dashboard import charts, client, maps
 from src.dashboard.app import commodity_fr, gain_summary, number_format
 from streamlit.testing.v1 import AppTest
 
@@ -25,7 +25,8 @@ FORECASTS = [
     {"series_id": 1, "horizon_months": h, "origin_period": "2025-12-01",
      "target_period": f"2026-{h:02d}-01", "yhat": 280.0 + h, "lower_80": 250.0, "upper_80": 300.0 + h,
      "unit_measure": "KG", "currency_code": "XOF", "market_name": "Djibo", "commodity_name_en": "Millet",
-     "country_iso3": "BFA", "model": "LightGBM_Global", "test_picp_80": 0.76, "last_value": 271.0}
+     "country_iso3": "BFA", "model": "LightGBM_Global", "test_picp_80": 0.76, "last_value": 271.0,
+     "recent_bias_pct": -14.0, "interval_method": "log_symmetric"}
     for h in (1, 3, 6)
 ]  # fmt: skip
 ALERT = {"series_id": 1, "period": "2025-08-01", "observed_value": 300.0, "expected_value": 240.0,
@@ -98,24 +99,33 @@ def test_unreachable_api(monkeypatch) -> None:
     assert client.health()["status"] == "unreachable"
 
 
-SERIES = {"series_id": 1, "market_code": "BFA_1", "market_name": "Djibo", "commodity_name_en": "Millet",
-          "unit_measure": "KG", "currency_code": "XOF", "is_ml_eligible": True,
-          "ineligibility_reason": None, "granularity_level": "MARKET", "last_obs_date": "2025-12-01",
-          "last_value": 271.0}  # fmt: skip
+SERIES = {"series_id": 1, "country_iso3": "BFA", "market_code": "BFA_1", "market_name": "Djibo",
+          "commodity_name_en": "Millet", "commodity_group": "Millet", "unit_measure": "KG",
+          "currency_code": "XOF", "is_ml_eligible": True, "ineligibility_reason": None,
+          "granularity_level": "MARKET", "last_obs_date": "2025-12-01", "last_value": 271.0}  # fmt: skip
 NO_GPS = {**SERIES, "series_id": 2, "market_code": "BFA_2", "market_name": "Sans-GPS",
-          "is_ml_eligible": False}  # fmt: skip
+          "is_ml_eligible": False, "ineligibility_reason": "SHORT_CONTINUOUS_SEGMENT"}  # fmt: skip
+NEAR = {
+    **SERIES,
+    "series_id": 3,
+    "market_code": "BFA_3",
+    "market_name": "Titao",
+    "last_value": 250.0,
+}
+COUNTRY = {"country_iso3": "BFA", "country_name_fr": "Burkina Faso", "ml_eligible_series": 1,
+           "max_observed_date": "2025-12-01", "lean_season_months": "06,07,08,09"}  # fmt: skip
 FAKE_API = {
-    "countries": lambda: [{"country_iso3": "BFA", "country_name_fr": "Burkina Faso",
-                           "ml_eligible_series": 1, "max_observed_date": "2025-12-01",
-                           "lean_season_months": "06,07,08,09"}],
+    "countries": lambda: [COUNTRY, {**COUNTRY, "country_iso3": "MLI", "country_name_fr": "Mali"}],
     "commodities": lambda country: [{"commodity_group": "Millet"}],
-    "series": lambda country, group=None, frequency="MONTHLY": [SERIES, NO_GPS],
+    "series": lambda country, group=None, frequency="MONTHLY": [SERIES, NO_GPS, NEAR],
     "markets": lambda country: [
         {"market_code": "BFA_1", "market_name": "Djibo", "latitude": 14.1, "longitude": -1.6},
         {"market_code": "BFA_2", "market_name": "Sans-GPS", "latitude": None, "longitude": None},
+        {"market_code": "BFA_3", "market_name": "Titao", "latitude": 13.77, "longitude": -2.07},
     ],
     "history": lambda sid: {"observations": _history()},
-    "forecasts": lambda **kw: {"items": FORECASTS, "data_until": "2025-12-01"},
+    "forecasts": lambda **kw: {"items": [] if kw.get("series_id") == 2 else FORECASTS,
+                               "data_until": "2025-12-01"},
     "anomalies": lambda **kw: {"items": [ALERT], "total": 1},
     "model_metrics": lambda window, **kw: {"items": [
         {"model_name": m, "horizon_months": h, "series": 1, "mape_pct": 9.0, "gain_vs_naive_pct": g,
@@ -126,37 +136,85 @@ FAKE_API = {
 }  # fmt: skip
 
 
-def _page(monkeypatch, **params) -> AppTest:
+def _page(monkeypatch, page: str | None = None, **params) -> AppTest:
+    """Run the app (home page), or one page file directly (AppTest cannot switch pages
+    declared with st.navigation)."""
     for name, fake in FAKE_API.items():
         monkeypatch.setattr(client, name, fake)
-    page = AppTest.from_file(APP, default_timeout=30)
+    script = str(Path(APP).parent / page) if page else APP
+    app = AppTest.from_file(script, default_timeout=30)
     for key, value in params.items():
-        page.query_params[key] = value
-    return page.run()
+        app.query_params[key] = value
+    return app.run()
 
 
-def test_full_page_renders_map_alerts_sheet_and_method(monkeypatch) -> None:
+def _text(page: AppTest) -> str:
+    return " ".join(m.value for m in page.markdown) + " ".join(t.value for t in page.title)
+
+
+def _param(page: AppTest, key: str) -> str:
+    value = page.query_params[key]
+    return value[0] if isinstance(value, list) else value  # AppTest keeps a list per key
+
+
+def test_home_answers_before_any_click(monkeypatch) -> None:
     page = _page(monkeypatch)
     assert not page.exception
-    text = " ".join(m.value for m in page.markdown)
-    assert "Mil, Burkina Faso : où les prix s'écartent-ils de la normale ?" in text
+    text = _text(page)
+    assert "anormaux ce mois" in text  # title uses no-break hyphens
     assert "1 marché(s) sans coordonnées publiées ne sont pas sur la carte : Sans-GPS." in text
     assert "© contributeurs OpenStreetMap" in text
+    # Alert block: market, symbol and deviation, sentence with the expected level.
+    assert "300 XOF/kg, alors qu'environ 240 étaient attendus pour la saison." in text
+    assert "▲ +25 %" in text and "en période de soudure" in text
+    assert text.count("[à intégrer]") == 4  # outside factors are never invented
+    assert "Plus fortes variations attendues dans 3 mois" in " ".join(
+        h.value for h in page.subheader
+    )
+    assert "sans validation du WFP ni de la FAO" in text
+    assert len(page.get("plotly_chart")) == 1  # the map
+    assert (_param(page, "pays"), _param(page, "produit")) == ("BFA", "mil")
+
+
+def test_market_sheet_sentence_badge_bias_and_neighbours(monkeypatch) -> None:
+    page = _page(monkeypatch, "views/marche.py", pays="BFA", produit="mil", marche="1")
+    assert not page.exception
+    text = _text(page)
     assert "Mil à Djibo" in text
-    # Summary sentence and reliability badge in words (76 % coverage -> "correcte").
-    assert "En août 2025, il était 25 % au-dessus de son niveau habituel pour la saison" in text
+    assert "En août 2025, il était <b>25 % au-dessus de son niveau habituel</b>" in text
     assert "● Fiabilité correcte" in text
-    assert "Campagne d'entraînement n° 6" in text
-    assert len(page.get("plotly_chart")) == 3  # map + price chart + model comparison
-    assert [b.label for b in page.button][0].startswith("▲ Hausse +25 % · Djibo")
-    # Every view has its own URL.
-    assert page.query_params["pays"] in ("BFA", ["BFA"])  # AppTest keeps a list per key
-    assert page.query_params["marche"] in ("1", ["1"])
-    assert [t.label for t in page.tabs] == [
-        "Situation",
-        "Prévisions par marché",
-        "Méthode & qualité",
-    ]
+    assert "surestimé le prix de 14 %" in text  # |bias| >= 10 %: shown, never corrected
+    assert "Titao" in text and "Sans-GPS" not in text.split("Marchés voisins")[-1]
+    assert len(page.get("plotly_chart")) == 1
+    assert _param(page, "marche") == "1"
+
+
+def test_url_restores_the_view(monkeypatch) -> None:
+    page = _page(monkeypatch, "views/marche.py", pays="BFA", produit="mil", marche="2",
+                 h="6", periode="1an")  # fmt: skip
+    assert not page.exception
+    text = _text(page)
+    assert "Mil à Sans-GPS" in text
+    assert "moins de 60 mois de relevés continus" in text
+    assert (_param(page, "h"), _param(page, "periode")) == ("6", "1an")
+
+
+def test_country_switch_from_the_url_and_the_map(monkeypatch) -> None:
+    page = _page(monkeypatch, pays="MLI", produit="mil")
+    assert not page.exception
+    assert "Carte des marchés · mil, Mali" in _text(page)
+    assert _param(page, "pays") == "MLI"
+    assert maps.clicked([{"location": "MLI", "curve_number": 0}]) == ("country", "MLI")
+    assert maps.clicked([{"customdata": [7]}]) == ("market", 7)
+    assert maps.clicked([]) is None
+    # A marker sits on its country's area: the click opens the market, not the country.
+    assert maps.clicked([{"location": "BFA"}, {"customdata": [7]}]) == ("market", 7)
+
+
+def test_reliability_page_names_the_served_version(monkeypatch) -> None:
+    page = _page(monkeypatch, "views/fiabilite.py")
+    assert not page.exception
+    assert "Campagne d'entraînement n° 6" in _text(page)
 
 
 def test_page_shows_a_clear_message_when_the_api_is_down(monkeypatch) -> None:
@@ -169,11 +227,15 @@ def test_page_shows_a_clear_message_when_the_api_is_down(monkeypatch) -> None:
     assert "ne répond pas" in page.error[0].value
 
 
-def test_url_restores_the_view_and_alert_rows_open_the_market(monkeypatch) -> None:
-    page = _page(monkeypatch, periode="1an", horizon="6", marche="2")
-    assert not page.exception
-    assert page.radio(key="period_radio").value == "1an"
-    assert "Mil à Sans-GPS" in " ".join(m.value for m in page.markdown)
-    page.button[0].click().run()
-    assert not page.exception
-    assert "Mil à Djibo" in " ".join(m.value for m in page.markdown)
+def test_cached_answers_are_keyed_on_the_published_run(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(client, "_get", lambda path, params=None: calls.append(path) or [path])
+    client.data_version.clear()
+    versions = iter(["7:2026-09-01", "7:2026-09-01", "8:2026-10-01"])
+    monkeypatch.setattr(client, "data_version", lambda: next(versions))
+    client.countries.clear()
+    client.countries()
+    client.countries()  # same run: served from the cache
+    assert calls == ["/api/v1/countries"]
+    client.countries()  # new run published: fetched again at once
+    assert calls == ["/api/v1/countries", "/api/v1/countries"]

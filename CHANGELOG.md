@@ -2,6 +2,22 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les dates sont celles de la fusion dans `main`.
 
+## [Non publié] — branche `ux/identite-visuelle` (identité visuelle)
+
+### Ajouté
+- Logo : versions transparente, carrées, horizontale, en-tête, favicons et icônes, toutes tirées du logo complet par `scripts/build_logo_assets.py` ; `docs/design/logo/LOGO.md`.
+- Charte de couleurs mesurée sur le logo, dans un seul fichier de jetons (`src/dashboard/tokens.py`), avec tests de contraste WCAG AA et d'écart entre l'accent de marque et le rouge d'alerte.
+- Site en pages : Ce mois-ci, Marchés (fiche), Facteurs, Fiabilité, Données & API, avec un en-tête clair et le logo.
+- Accueil selon la maquette v2 : puces de pays, carte et alertes côte à côte, facteurs « [à intégrer] », plus fortes variations attendues.
+- Fiche marché selon la maquette v2 : fil d'Ariane, actions CSV et lien, panneau de prévision, facteurs, chronologie, marchés voisins.
+- Changer de pays en cliquant sur la carte ; vue « Tous » avec tous les pays suivis ; Maroc (indice national) et Côte d'Ivoire (consultation seule) signalés.
+- Écart maquette / réalisé : `docs/design/ECART_MAQUETTE.md` et captures `docs/design/captures/v2-*`.
+
+### Modifié
+- Le cache du tableau de bord dépend de l'identifiant du run publié : les nouveaux chiffres s'affichent moins d'une minute après une mise à jour, au lieu d'une heure.
+- La molette ne zoome plus la carte (elle faisait défiler la carte au lieu de la page) : boutons + / − et pincement.
+- Adresse : `h=` remplace `horizon=` et le produit est en français (`produit=mais`) ; les anciennes adresses restent comprises.
+
 ## [Non publié] — branche `ux/quick-wins` (phase A)
 
 ### Corrigé

@@ -1,4 +1,6 @@
-# 🌾 AgriPrix Observatory
+<p align="center"><img src="docs/design/logo/agriprix-logo-horizontal.png" alt="Logo AgriPrix : un œil entouré d'épis, avec une ligne de prévision" width="420"></p>
+
+# AgriPrix Observatory
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Docker Compose](https://img.shields.io/badge/Docker_Compose-100%25_Containerized-2496ED?logo=docker&logoColor=white)](docker-compose.yml)

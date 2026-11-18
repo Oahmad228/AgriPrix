@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import functools
 import os
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -36,22 +38,54 @@ def _get(path: str, params: dict[str, Any] | None = None) -> Any:
     return response.json()
 
 
-# Data change once a month: an hour of cache keeps the dashboard fast and spares the API's
-# per-client quota, without serving stale numbers after a monthly refresh for long.
+# Data change once a month. Every cached answer is keyed on the active training run: a
+# light query (/runs/active, cached one minute) gives its id, so a monthly publication shows
+# its new numbers within a minute instead of after the one-hour cache expiry.
 CACHE_TTL = 3600
+VERSION_TTL = 60
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://agriprix-api.onrender.com")
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@st.cache_data(ttl=VERSION_TTL, show_spinner=False)
+def data_version() -> str:
+    """Identifier of the published data: active run id and data date ("none" if unknown)."""
+    try:
+        run = _get("/api/v1/runs/active")
+    except ApiError:
+        return "none"
+    return f"{run.get('training_run_id')}:{run.get('data_until')}"
+
+
+def _versioned(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Cache func for CACHE_TTL with the data version as part of the key."""
+
+    def cached(version: str, *args: Any, **kwargs: Any) -> Any:
+        return func(*args, **kwargs)
+
+    # st.cache_data keys on the function's qualified name: one distinct name per function.
+    cached.__qualname__ = f"{func.__qualname__}__versioned"
+    cached.__name__ = cached.__qualname__
+    store = st.cache_data(ttl=CACHE_TTL, show_spinner=False)(cached)
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return store(data_version(), *args, **kwargs)
+
+    wrapper.clear = store.clear  # type: ignore[attr-defined]
+    return wrapper
+
+
+@_versioned
 def countries() -> list[dict]:
     return _get("/api/v1/countries")
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def commodities(country: str) -> list[dict]:
     return _get("/api/v1/commodities", {"country": country})
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def series(
     country: str, commodity_group: str | None = None, frequency: str = "MONTHLY"
 ) -> list[dict]:
@@ -67,18 +101,18 @@ def series(
     return page["items"]
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def markets(country: str) -> list[dict]:
     """Markets of a country with the coordinates published by WFP (None when absent)."""
     return _get("/api/v1/markets", {"country": country})
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def history(series_id: int) -> dict:
     return _get(f"/api/v1/series/{series_id}/history")
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def forecasts(series_id: int | None = None, country: str | None = None,
               commodity_group: str | None = None, horizon: int | None = None) -> dict:  # fmt: skip
     return _get(
@@ -88,7 +122,7 @@ def forecasts(series_id: int | None = None, country: str | None = None,
     )  # fmt: skip
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def anomalies(country: str | None = None, commodity_group: str | None = None,
               series_id: int | None = None, since: str | None = None, limit: int = 1000) -> dict:  # fmt: skip
     return _get(
@@ -98,7 +132,7 @@ def anomalies(country: str | None = None, commodity_group: str | None = None,
     )  # fmt: skip
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def model_metrics(
     window: str, country: str | None = None, commodity_group: str | None = None
 ) -> dict:
@@ -108,7 +142,7 @@ def model_metrics(
     )
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+@_versioned
 def active_run() -> dict:
     return _get("/api/v1/runs/active")
 
